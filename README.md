@@ -78,8 +78,19 @@ python -m pytest tests/ -v
   touched, wins) plus your own reflection fields, also exportable to
   Markdown.
 
-Phase 4 (optional AI features) and Phase 5 (export/backup, keyboard
-shortcuts, dark mode) are still to come.
+**Phase 4 — optional AI features (off by default):**
+- Set `ANTHROPIC_API_KEY` in `.env`, then switch the toggle on under
+  Settings → AI features. Nothing is sent to the Anthropic API unless both
+  are true, and every AI button is labeled with what it sends.
+- **Summarize with AI** on a note — generates a short summary, shown on
+  the note.
+- **Suggest tasks with AI** on a note — proposes action items; you approve
+  which ones actually get created as tasks.
+- **Draft with AI** on a weekly review — fills in the reflection fields
+  from that week's summary, which you can then edit before saving.
+
+Phase 5 (export/backup, keyboard shortcuts, dark mode, responsive layout)
+is still to come.
 
 ## Project layout
 

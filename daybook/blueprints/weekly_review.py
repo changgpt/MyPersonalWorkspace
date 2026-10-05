@@ -1,6 +1,6 @@
-from flask import Blueprint, Response, redirect, render_template, request, url_for
+from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
 
-from .. import db
+from .. import ai, db
 
 bp = Blueprint("weekly_review", __name__, url_prefix="/weekly-review")
 
@@ -20,7 +20,18 @@ def detail_view(week_str):
         summary=db.weekly_review_summary(week_str),
         prev_week=db.adjacent_week_str(week_str, -1),
         next_week=db.adjacent_week_str(week_str, 1),
+        ai_enabled=ai.is_ai_enabled(),
     )
+
+
+@bp.route("/<week_str>/ai-draft", methods=["POST"])
+def ai_draft_view(week_str):
+    try:
+        draft = ai.draft_weekly_review(db.weekly_review_summary(week_str))
+        db.save_weekly_review(week_str, **draft)
+    except ai.AIError as exc:
+        flash(str(exc))
+    return redirect(url_for("weekly_review.detail_view", week_str=week_str))
 
 
 @bp.route("/<week_str>", methods=["POST"])

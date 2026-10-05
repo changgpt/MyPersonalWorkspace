@@ -38,6 +38,7 @@ daybook/
   docx_utils.py         # docx_bytes_to_markdown(bytes) -> Markdown
   task_extraction.py    # extract_action_items(markdown) -> ["line text", ...]
   tag_utils.py           # shared comma-separated-tag-field parsing (notes + wins)
+  ai.py                  # Phase 4: optional Anthropic API features, off by default
   blueprints/           # one file per feature area (notes, people, projects,
                         # tasks, topics, search, settings, dashboard, skills,
                         # wins, activity, weekly_review)
@@ -118,6 +119,28 @@ data/                    # git-ignored; daybook.db lives here
   auto-summary is computed on the fly from existing tables, not stored —
   only the three reflection fields persist, upserted per week in
   `weekly_review`.
+- **AI features (Phase 4) are off by default**, gated on two independent
+  conditions checked by `ai.is_ai_enabled()`: `ANTHROPIC_API_KEY` set in
+  `.env` (`ai.api_key_configured()`) AND the Settings toggle switched on
+  (stored in the generic `setting` key/value table via
+  `db.get_setting`/`set_setting`). Every feature's template shows a
+  one-line "sends X to the Anthropic API" note next to its button —
+  don't add a new AI-backed button without one.
+  - Uses the official `anthropic` Python SDK (never raw HTTP), model id
+    from `config.ANTHROPIC_MODEL` (never hard-coded in a call site).
+  - `ai._complete()` is the only function that touches the network;
+    everything else (`parse_bullet_list`, `parse_weekly_draft`,
+    `_summary_digest`) is pure text processing, kept separate so it's
+    testable without mocking an API call (see `tests/test_ai.py`, which
+    mocks `ai._client`).
+  - AI-suggested tasks (from `suggest_action_items`) require approval: the
+    note route renders a checkbox list and only creates tasks for the ones
+    submitted, per the spec. These tasks have `source_note_id` set but no
+    `source_line_text` — they didn't come from a literal note line, so
+    the task/note checkbox sync (see above) doesn't apply to them.
+  - `ai.AIError` is the one exception type blueprints need to catch; it
+    wraps both "features are off" and any underlying `anthropic.APIError`,
+    and is shown to the user via `flash()`.
 
 ## Running and testing
 
@@ -134,13 +157,17 @@ python -m pytest tests/ -v
 Tests use a temporary SQLite file per test (see `tests/conftest.py`), never
 the real `data/daybook.db`.
 
-## Data model (Phase 1 + 2 + 3)
+## Data model (Phase 1 + 2 + 3 + 4)
 
-`note_type`, `person`, `project`, `topic`, `note`, three join tables
-(`note_person`, `note_project`, `note_topic`), the `note_fts` virtual table,
-`task` (status/priority/due_date/is_today/project_id/source_note_id/
+`note_type`, `person`, `project`, `topic`, `note` (incl. `ai_summary`,
+added via a manual `ALTER TABLE` migration in `db.init_db` since
+`CREATE TABLE IF NOT EXISTS` doesn't add columns to an existing table —
+see `_add_column_if_missing`), three join tables (`note_person`,
+`note_project`, `note_topic`), the `note_fts` virtual table, `task`
+(status/priority/due_date/is_today/project_id/source_note_id/
 source_line_text), `skill` + `skill_level_history` + `skill_evidence`,
-`log_entry`, `win` + `win_person`, and `weekly_review`.
+`log_entry`, `win` + `win_person`, `weekly_review`, and `setting`
+(generic key/value, currently just the AI-features toggle).
 
 Note: `task` has no `person` field (matches the original spec's data
 model), so a task isn't directly linked to a person — only to a project
@@ -160,8 +187,10 @@ and/or its source note. The People page still only shows notes.
   entry/win), wins log ("Mark as win" from a completed task, Markdown
   export), weekly review (auto-summary + reflection fields, prev/next
   week nav, Markdown export).
-- **Phase 4 (not started):** optional AI features via Anthropic API, off by
-  default.
+- **Phase 4 (done):** optional AI features via the Anthropic API, off by
+  default (`ANTHROPIC_API_KEY` in `.env` + Settings toggle) — summarize a
+  note, suggest action items from a note (approved before creating tasks),
+  draft a weekly review's reflection fields from that week's summary.
 - **Phase 5 (not started):** export/backup, keyboard shortcuts, dark mode,
   responsive layout.
 

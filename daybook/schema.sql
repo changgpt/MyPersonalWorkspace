@@ -170,3 +170,10 @@ CREATE TABLE IF NOT EXISTS weekly_review (
     focus_next_week TEXT NOT NULL DEFAULT '',
     updated_at TEXT NOT NULL
 );
+
+-- Generic key/value store for small app-wide settings (currently just the
+-- Phase 4 AI-features toggle). See db.get_setting/set_setting.
+CREATE TABLE IF NOT EXISTS setting (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);

@@ -1,8 +1,29 @@
 {% extends "base.html" %}
-{% block title %}Note types — Daybook{% endblock %}
+{% block title %}Settings — Daybook{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h2>Note types</h2>
+  <h2>Settings</h2>
+</div>
+
+<h3>AI features</h3>
+{% if ai_api_key_configured %}
+  <form method="post" action="{{ url_for('settings.ai_toggle_view') }}" class="card">
+    <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:0;">
+      <input type="checkbox" name="enabled" value="1" {{ 'checked' if ai_enabled }} style="width:auto;"
+             onchange="this.form.submit()">
+      Enable AI features (summarize note, suggest action items, draft weekly review)
+    </label>
+    <p class="flash-hint">Turning this on lets those features send note or task text to the Anthropic API when you click them. Nothing is sent automatically.</p>
+  </form>
+{% else %}
+  <div class="empty-state">
+    Set <code>ANTHROPIC_API_KEY</code> in your <code>.env</code> file to enable AI features.
+  </div>
+{% endif %}
+
+<h3>Note types</h3>
+<div class="page-header">
+  <div></div>
   <a class="btn" href="{{ url_for('settings.note_type_new_view') }}">+ New type</a>
 </div>
 

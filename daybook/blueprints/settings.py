@@ -1,6 +1,6 @@
 from flask import Blueprint, abort, redirect, render_template, request, url_for
 
-from .. import db
+from .. import ai, db
 
 bp = Blueprint("settings", __name__, url_prefix="/settings")
 
@@ -10,8 +10,17 @@ NOTE_TYPE_COLORS = ["clay", "sage", "ochre", "dustyblue", "plum", "slate", "moss
 @bp.route("/note-types")
 def note_types_view():
     return render_template(
-        "settings/note_types.html", note_types=db.list_note_types(include_archived=True)
+        "settings/note_types.html",
+        note_types=db.list_note_types(include_archived=True),
+        ai_api_key_configured=ai.api_key_configured(),
+        ai_enabled=ai.is_ai_enabled(),
     )
+
+
+@bp.route("/ai-toggle", methods=["POST"])
+def ai_toggle_view():
+    db.set_setting("ai_features_enabled", "1" if request.form.get("enabled") else "0")
+    return redirect(url_for("settings.note_types_view"))
 
 
 @bp.route("/note-types/new")

@@ -29,6 +29,13 @@
       <form class="search-form" action="{{ url_for('search.search_view') }}" method="get">
         <input type="text" name="q" placeholder="Search notes…" value="{{ request.args.get('q', '') }}">
       </form>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="empty-state" style="text-align:left; border-color: var(--accent-soft);">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
       {% block content %}{% endblock %}
     </main>
   </div>

@@ -25,6 +25,23 @@
 </div>
 {% endif %}
 
+{% if ai_enabled %}
+<div class="filter-bar">
+  <form method="post" action="{{ url_for('notes.ai_summarize_view', note_id=note['id']) }}">
+    <button class="btn btn-secondary" type="submit">Summarize with AI</button>
+  </form>
+  <a class="btn btn-secondary" href="{{ url_for('notes.ai_suggest_tasks_view', note_id=note['id']) }}">Suggest tasks with AI</a>
+  <span class="flash-hint">Sends this note's text to the Anthropic API.</span>
+</div>
+{% endif %}
+
+{% if note['ai_summary'] %}
+<div class="card" style="border-color: var(--accent-soft);">
+  <strong>AI summary</strong>
+  <p>{{ note['ai_summary'] }}</p>
+</div>
+{% endif %}
+
 <div class="note-body">
   {{ note['body_markdown'] | markdown | safe }}
 </div>

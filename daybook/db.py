@@ -36,7 +36,18 @@ def init_db():
     schema_path = config.BASE_DIR / "daybook" / "schema.sql"
     with open(schema_path, "r") as f:
         db.executescript(f.read())
+    _add_column_if_missing(db, "note", "ai_summary", "TEXT")
     db.commit()
+
+
+def _add_column_if_missing(db, table, column, column_type):
+    """CREATE TABLE IF NOT EXISTS in schema.sql only helps brand-new
+    databases -- it can't add a column to a table that already exists from
+    an earlier phase. This covers that case so `flask init-db` stays
+    idempotent and safe to re-run after a schema change."""
+    existing_columns = {row["name"] for row in db.execute(f"PRAGMA table_info({table})")}
+    if column not in existing_columns:
+        db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {column_type}")
 
 
 def now_iso():
@@ -883,3 +894,29 @@ def weekly_review_summary(week_str):
         skills_touched=skills_touched_between(date_from, date_to),
         wins=wins,
     )
+
+
+# --- Settings (generic key/value) --------------------------------------
+
+def get_setting(key, default=None):
+    db = get_db()
+    row = db.execute("SELECT value FROM setting WHERE key = ?", (key,)).fetchone()
+    return row["value"] if row else default
+
+
+def set_setting(key, value):
+    db = get_db()
+    db.execute(
+        """INSERT INTO setting (key, value) VALUES (?, ?)
+           ON CONFLICT(key) DO UPDATE SET value = excluded.value""",
+        (key, value),
+    )
+    db.commit()
+
+
+# --- AI (Phase 4) --------------------------------------------------------
+
+def save_note_ai_summary(note_id, summary):
+    db = get_db()
+    db.execute("UPDATE note SET ai_summary = ? WHERE id = ?", (summary, note_id))
+    db.commit()

@@ -1,8 +1,8 @@
 from datetime import date
 
-from flask import Blueprint, abort, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
-from .. import db
+from .. import ai, db
 from ..docx_utils import docx_bytes_to_markdown
 from ..tag_utils import tag_names_as_text as _tag_names_as_text
 from ..tag_utils import tag_names_to_ids as _tag_names_to_ids
@@ -99,7 +99,43 @@ def detail_view(note_id):
         evidence=db.evidence_for_entity("note", note_id),
         all_skills=db.list_skills(),
         entity_type="note", entity_id=note_id,
+        ai_enabled=ai.is_ai_enabled(),
     )
+
+
+@bp.route("/<int:note_id>/ai-summary", methods=["POST"])
+def ai_summarize_view(note_id):
+    note = db.get_note(note_id)
+    if note is None:
+        abort(404)
+    try:
+        summary = ai.summarize_note(note["body_markdown"])
+        db.save_note_ai_summary(note_id, summary)
+    except ai.AIError as exc:
+        flash(str(exc))
+    return redirect(url_for("notes.detail_view", note_id=note_id))
+
+
+@bp.route("/<int:note_id>/ai-suggest-tasks")
+def ai_suggest_tasks_view(note_id):
+    note = db.get_note(note_id)
+    if note is None:
+        abort(404)
+    try:
+        items = ai.suggest_action_items(note["body_markdown"])
+    except ai.AIError as exc:
+        flash(str(exc))
+        return redirect(url_for("notes.detail_view", note_id=note_id))
+    return render_template("notes/ai_suggest_tasks.html", note=note, items=items)
+
+
+@bp.route("/<int:note_id>/ai-suggest-tasks", methods=["POST"])
+def ai_suggest_tasks_apply_view(note_id):
+    if db.get_note(note_id) is None:
+        abort(404)
+    for title in request.form.getlist("items"):
+        db.create_task(title=title, source_note_id=note_id)
+    return redirect(url_for("notes.detail_view", note_id=note_id))
 
 
 @bp.route("/<int:note_id>/edit")

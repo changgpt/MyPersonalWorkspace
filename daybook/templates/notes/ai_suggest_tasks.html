@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Suggested tasks — Daybook{% endblock %}
+{% block content %}
+<div class="page-header"><h2>Suggested tasks from "{{ note['title'] }}"</h2></div>
+
+{% if items %}
+<form method="post" action="{{ url_for('notes.ai_suggest_tasks_apply_view', note_id=note['id']) }}">
+  <p class="flash-hint">Uncheck anything you don't want created, then approve.</p>
+  {% for item in items %}
+    <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:8px;">
+      <input type="checkbox" name="items" value="{{ item }}" checked style="width:auto;">
+      {{ item }}
+    </label>
+  {% endfor %}
+  <div style="margin-top: 24px;">
+    <button class="btn" type="submit">Create selected tasks</button>
+    <a class="btn btn-secondary" href="{{ url_for('notes.detail_view', note_id=note['id']) }}">Cancel</a>
+  </div>
+</form>
+{% else %}
+<div class="empty-state">No action items suggested for this note.</div>
+<a class="btn btn-secondary" href="{{ url_for('notes.detail_view', note_id=note['id']) }}">Back to note</a>
+{% endif %}
+{% endblock %}

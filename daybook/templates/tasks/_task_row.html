@@ -1,0 +1,9 @@
+<li class="task-row {{ 'task-done' if task['status'] == 'done' }}" id="task-{{ task['id'] }}">
+  <input type="checkbox" {{ 'checked' if task['status'] == 'done' }}
+         hx-post="{{ url_for('tasks.toggle_view', task_id=task['id']) }}"
+         hx-trigger="change" hx-target="closest li" hx-swap="outerHTML">
+  <span class="task-title">{{ task['title'] }}</span>
+  <span class="tag tag-{{ {'low': 'sage', 'medium': 'ochre', 'high': 'rose'}[task['priority']] }}">{{ task['priority'] }}</span>
+  {% if task['due_date'] %}<span class="card-meta">due {{ task['due_date'] }}</span>{% endif %}
+  <a class="pill-link" href="{{ url_for('tasks.edit_view', task_id=task['id']) }}">Edit</a>
+</li>

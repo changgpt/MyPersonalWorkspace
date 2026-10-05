@@ -8,8 +8,19 @@
 <p class="card-meta">{{ project['status'] }}</p>
 {% if project['description'] %}<p>{{ project['description'] }}</p>{% endif %}
 
+<h3>Tasks</h3>
+<p class="flash-hint">Wins linked to this project will appear here in a later phase.</p>
+{% if tasks %}
+<ul class="task-checklist">
+  {% for task in tasks %}
+    {% include "tasks/_task_row.html" %}
+  {% endfor %}
+</ul>
+{% else %}
+<div class="empty-state">No tasks linked to this project yet.</div>
+{% endif %}
+
 <h3>Notes</h3>
-<p class="flash-hint">Tasks and wins linked to this project will appear here in later phases.</p>
 {% if notes %}
   {% for note in notes %}
     {{ note_card(note) }}

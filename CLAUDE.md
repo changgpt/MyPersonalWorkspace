@@ -36,10 +36,12 @@ daybook/
   seed.py              # default note types + their Markdown templates
   markdown_utils.py    # render_markdown(text) -> HTML
   docx_utils.py         # docx_bytes_to_markdown(bytes) -> Markdown
+  task_extraction.py    # extract_action_items(markdown) -> ["line text", ...]
   blueprints/           # one file per feature area (notes, people, projects,
-                        # topics, search, settings, dashboard)
+                        # tasks, topics, search, settings, dashboard)
   templates/            # Jinja templates, mirroring the blueprints
   static/style.css       # warm-neutral design system (CSS custom properties)
+  static/board.js        # vanilla JS drag-and-drop for the task board
   static/vendor/         # vendored JS (htmx)
 tests/                   # pytest; conftest.py gives `app`/`client`/`db` fixtures
 run.py                   # entry point: `python run.py`
@@ -70,10 +72,25 @@ data/                    # git-ignored; daybook.db lives here
   `dustyblue`, `plum`, `slate`, `moss`, `rose`), each with a CSS class in
   `style.css` (`.tag-<color>`). Add new colors there before using them in
   `settings.NOTE_TYPE_COLORS`.
-- **htmx usage is minimal by design**: the one interactive piece in Phase 1
-  is the note-type template prefill (`GET /notes/template?note_type_id=`),
-  wired via `hx-get`/`hx-trigger="change"` on the type `<select>`. Prefer
-  plain forms/links over htmx unless there's a genuine partial-update case.
+- **htmx usage is minimal by design**: the note-type template prefill
+  (`GET /notes/template?note_type_id=`), wired via `hx-get`/
+  `hx-trigger="change"` on the type `<select>`, and the Today checklist's
+  checkbox toggle (`POST /tasks/<id>/toggle`, swaps in the updated `<li>`).
+  Prefer plain forms/links over htmx unless there's a genuine partial-update
+  case.
+- **Action-item extraction** (`task_extraction.extract_action_items`) finds
+  `- [ ]` and `TODO:` lines in a note's body. `db.sync_tasks_from_note` is
+  called after every note save; it creates a task per new line, keyed by
+  the line's exact text so re-saving never duplicates. Sync is **one-way**:
+  marking a task done flips its source line to `- [x]` in the note
+  (`db.set_task_status` → `db._sync_note_checkbox`), but hand-editing a
+  checkbox in the note body does not flip the task back. If you need to
+  change this, start from `test_tasks.py`, which pins the current behaviour.
+- **Board drag-and-drop** is plain HTML5 drag/drop (`static/board.js`), no
+  library. It moves the card optimistically and POSTs the new status;
+  on failure it just alerts and relies on a refresh to show the true state
+  — acceptable for a single-user local tool, not a model to extend without
+  reconsidering if this app ever needs to be more robust about it.
 
 ## Running and testing
 
@@ -90,20 +107,27 @@ python -m pytest tests/ -v
 Tests use a temporary SQLite file per test (see `tests/conftest.py`), never
 the real `data/daybook.db`.
 
-## Data model (Phase 1)
+## Data model (Phase 1 + 2)
 
-`note_type`, `person`, `project`, `topic`, `note`, and three join tables
-(`note_person`, `note_project`, `note_topic`), plus the `note_fts` virtual
-table. `Task`, `LogEntry`, `Skill`, `SkillEvidence`, `Win`, and
-`WeeklyReview` are not implemented yet — they arrive in Phases 2–3 per the
-original spec's phasing.
+`note_type`, `person`, `project`, `topic`, `note`, three join tables
+(`note_person`, `note_project`, `note_topic`), the `note_fts` virtual table,
+and `task` (status/priority/due_date/is_today/project_id/source_note_id/
+source_line_text). `LogEntry`, `Skill`, `SkillEvidence`, `Win`, and
+`WeeklyReview` are not implemented yet — they arrive in Phase 3.
+
+Note: `task` has no `person` field (matches the original spec's data
+model), so a task isn't directly linked to a person — only to a project
+and/or its source note. The People page still only shows notes.
 
 ## Phase status
 
 - **Phase 1 (done):** notes, note types + templates, people/projects/topics
   tagging, Knowledge Bank, full-text search, settings.
-- **Phase 2 (not started):** Task model, Today/Board views, auto-extraction
-  of `- [ ]` / `TODO:` lines from notes into linked tasks, dashboard content.
+- **Phase 2 (done):** Task model, Today checklist (quick-add, overdue +
+  is_today), Board (kanban, drag-and-drop, filter by project/priority),
+  auto-extraction of `- [ ]` / `TODO:` lines from notes into linked tasks
+  (dedup on resave, one-way checkbox sync back to the note), dashboard
+  now shows today's tasks / overdue / completed-this-week.
 - **Phase 3 (not started):** activity log, skills tracker, wins log, weekly
   review.
 - **Phase 4 (not started):** optional AI features via Anthropic API, off by

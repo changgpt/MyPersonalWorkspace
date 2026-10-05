@@ -14,12 +14,13 @@ def create_app():
     def markdown_filter(text):
         return render_markdown(text)
 
-    from .blueprints import dashboard, notes, people, projects, topics, search, settings
+    from .blueprints import dashboard, notes, people, projects, tasks, topics, search, settings
 
     app.register_blueprint(dashboard.bp)
     app.register_blueprint(notes.bp)
     app.register_blueprint(people.bp)
     app.register_blueprint(projects.bp)
+    app.register_blueprint(tasks.bp)
     app.register_blueprint(topics.bp)
     app.register_blueprint(search.bp)
     app.register_blueprint(settings.bp)

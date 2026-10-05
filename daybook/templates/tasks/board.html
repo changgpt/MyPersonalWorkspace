@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Board — Daybook{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Board</h2>
+  <a class="btn btn-secondary" href="{{ url_for('tasks.today_view') }}">Today view</a>
+</div>
+
+<form class="filter-bar" method="get">
+  <select name="project">
+    <option value="">All projects</option>
+    {% for p in projects %}
+      <option value="{{ p['id'] }}" {{ 'selected' if filters.project_id == p['id'] }}>{{ p['name'] }}</option>
+    {% endfor %}
+  </select>
+  <select name="priority">
+    <option value="">All priorities</option>
+    {% for pr in ['low', 'medium', 'high'] %}
+      <option value="{{ pr }}" {{ 'selected' if filters.priority == pr }}>{{ pr }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn btn-secondary" type="submit">Filter</button>
+  <a class="btn btn-secondary" href="{{ url_for('tasks.board_view') }}">Clear</a>
+</form>
+
+<div class="board">
+  {% for status in statuses %}
+  <div class="board-column">
+    <h3>{{ status.replace('_', ' ') | title }}</h3>
+    <div class="board-column-list" data-status="{{ status }}">
+      {% for task in columns[status] %}
+      <div class="board-card" draggable="true" data-task-id="{{ task['id'] }}">
+        <div>{{ task['title'] }}</div>
+        <span class="tag tag-{{ {'low': 'sage', 'medium': 'ochre', 'high': 'rose'}[task['priority']] }}">{{ task['priority'] }}</span>
+        {% if task['due_date'] %}<div class="card-meta">due {{ task['due_date'] }}</div>{% endif %}
+        <a class="pill-link" href="{{ url_for('tasks.edit_view', task_id=task['id']) }}">Edit</a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<p class="flash-hint">Drag a card between columns to change its status.</p>
+<script src="{{ url_for('static', filename='board.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Today — Daybook{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Today</h2>
+  <a class="btn btn-secondary" href="{{ url_for('tasks.board_view') }}">Board view</a>
+</div>
+
+<form class="filter-bar" method="post" action="{{ url_for('tasks.quick_add_view') }}">
+  <input type="text" name="title" placeholder="Quick-add a task for today…" required style="width: 320px;">
+  <button class="btn" type="submit">Add</button>
+</form>
+
+{% if tasks %}
+<ul class="task-checklist">
+  {% for task in tasks %}
+    {% include "tasks/_task_row.html" %}
+  {% endfor %}
+</ul>
+{% else %}
+<div class="empty-state">Nothing for today. Add something above, or flag an existing task as "today" from its edit page.</div>
+{% endif %}
+{% endblock %}

@@ -28,4 +28,13 @@
 <div class="note-body">
   {{ note['body_markdown'] | markdown | safe }}
 </div>
+
+{% if linked_tasks %}
+<h3>Linked tasks</h3>
+<ul class="task-checklist">
+  {% for task in linked_tasks %}
+    {% include "tasks/_task_row.html" %}
+  {% endfor %}
+</ul>
+{% endif %}
 {% endblock %}

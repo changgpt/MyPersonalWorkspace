@@ -206,6 +206,61 @@ mark { background: var(--accent-soft); color: var(--accent-hover); padding: 0 2p
   margin-top: 4px;
 }
 
+.task-checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  margin-bottom: 6px;
+}
+
+.task-row input[type="checkbox"] { width: 18px; height: 18px; }
+.task-row .task-title { flex: 1; }
+.task-row.task-done .task-title { text-decoration: line-through; color: var(--text-faint); }
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.board-column h3 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin: 0 0 10px 2px;
+}
+
+.board-column-list {
+  background: var(--surface-sunken);
+  border-radius: var(--radius);
+  padding: 8px;
+  min-height: 120px;
+}
+
+.board-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  box-shadow: var(--shadow-sm);
+  cursor: grab;
+}
+
+.board-card.dragging { opacity: 0.4; }
+
 footer.app-footer {
   margin-top: 40px;
   padding-top: 16px;

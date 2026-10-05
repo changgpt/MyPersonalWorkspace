@@ -38,11 +38,12 @@ on your network.
 python -m pytest tests/ -v
 ```
 
-## What's here (Phase 1)
+## What's here
 
-- **Notes** — pick a note type (Meeting note, Catch-up, CD Academy, 1:1, LP
-  query, Reading / learning, Idea), get a pre-filled Markdown template, write
-  or paste content, or import a `.txt`/`.md`/`.docx` file.
+**Phase 1 — notes:**
+- Pick a note type (Meeting note, Catch-up, CD Academy, 1:1, LP query,
+  Reading / learning, Idea), get a pre-filled Markdown template, write or
+  paste content, or import a `.txt`/`.md`/`.docx` file.
 - Tag notes with **people**, **projects**, and **topics** — new ones can be
   created just by typing a new name.
 - **Knowledge Bank** — every topic you've tagged, each with its own page
@@ -53,8 +54,19 @@ python -m pytest tests/ -v
   matches.
 - **Settings** — add, rename, or archive note types and edit their templates.
 
-Tasks, the activity log, skills tracker, wins log, and weekly review are
-planned for later phases.
+**Phase 2 — tasks:**
+- Any `- [ ]` or `TODO:` line in a note's body automatically becomes a task,
+  linked back to that note. Re-saving the note never creates duplicates.
+- **Today** — a checklist of tasks flagged "today" plus anything overdue,
+  with a quick-add box. Checking a task off also ticks its checkbox back in
+  the original note.
+- **Board** — kanban columns (To do / In progress / Blocked / Done), drag a
+  card to change its status, filter by project or priority.
+- The **Dashboard** now shows today's tasks, overdue tasks, and what you've
+  completed this week.
+
+The activity log, skills tracker, wins log, and weekly review are planned
+for Phase 3.
 
 ## Project layout
 

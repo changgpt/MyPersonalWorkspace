@@ -76,15 +76,17 @@ def new_view():
 @bp.route("", methods=["POST"])
 def create_view():
     form = request.form
+    body_markdown = _body_from_form(form, request.files)
     note_id = db.create_note(
         title=form["title"],
         note_type_id=int(form["note_type_id"]),
         event_date=form["event_date"],
-        body_markdown=_body_from_form(form, request.files),
+        body_markdown=body_markdown,
         person_ids=_tag_names_to_ids(form.get("people"), db.find_or_create_person),
         project_ids=_tag_names_to_ids(form.get("projects"), db.find_or_create_project),
         topic_ids=_tag_names_to_ids(form.get("topics"), db.find_or_create_topic),
     )
+    db.sync_tasks_from_note(note_id, body_markdown)
     return redirect(url_for("notes.detail_view", note_id=note_id))
 
 
@@ -103,7 +105,8 @@ def detail_view(note_id):
     if note is None:
         abort(404)
     tags = db.get_note_tags(note_id)
-    return render_template("notes/detail.html", note=note, tags=tags)
+    linked_tasks = db.tasks_for_note(note_id)
+    return render_template("notes/detail.html", note=note, tags=tags, linked_tasks=linked_tasks)
 
 
 @bp.route("/<int:note_id>/edit")
@@ -132,16 +135,18 @@ def update_view(note_id):
     if db.get_note(note_id) is None:
         abort(404)
     form = request.form
+    body_markdown = _body_from_form(form, request.files)
     db.update_note(
         note_id,
         title=form["title"],
         note_type_id=int(form["note_type_id"]),
         event_date=form["event_date"],
-        body_markdown=_body_from_form(form, request.files),
+        body_markdown=body_markdown,
         person_ids=_tag_names_to_ids(form.get("people"), db.find_or_create_person),
         project_ids=_tag_names_to_ids(form.get("projects"), db.find_or_create_project),
         topic_ids=_tag_names_to_ids(form.get("topics"), db.find_or_create_topic),
     )
+    db.sync_tasks_from_note(note_id, body_markdown)
     return redirect(url_for("notes.detail_view", note_id=note_id))
 
 

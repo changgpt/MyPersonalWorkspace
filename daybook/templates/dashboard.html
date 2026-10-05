@@ -8,9 +8,39 @@
 </div>
 
 <p class="flash-hint">
-  Tasks, the activity log, and the weekly review land in later phases — for now,
-  here's what you've been writing.
+  The activity log, skills tracker, wins log and weekly review land in later phases.
 </p>
+
+<h3>Today's tasks</h3>
+{% if today_tasks %}
+<ul class="task-checklist">
+  {% for task in today_tasks %}
+    {% include "tasks/_task_row.html" %}
+  {% endfor %}
+</ul>
+{% else %}
+<div class="empty-state">Nothing flagged for today. <a href="{{ url_for('tasks.today_view') }}">Go to Tasks</a>.</div>
+{% endif %}
+
+{% if overdue_tasks %}
+<h3>Overdue</h3>
+<ul class="task-checklist">
+  {% for task in overdue_tasks %}
+    {% include "tasks/_task_row.html" %}
+  {% endfor %}
+</ul>
+{% endif %}
+
+<h3>Completed this week</h3>
+{% if completed_this_week %}
+<ul class="task-checklist">
+  {% for task in completed_this_week %}
+    {% include "tasks/_task_row.html" %}
+  {% endfor %}
+</ul>
+{% else %}
+<div class="empty-state">Nothing completed yet this week.</div>
+{% endif %}
 
 <h3>Recent notes</h3>
 {% if recent_notes %}

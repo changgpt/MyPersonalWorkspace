@@ -5,12 +5,13 @@ keeps it obvious what each page actually asks the database for, and makes
 the FTS5 search queries (which ORMs handle awkwardly) straightforward.
 """
 import sqlite3
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import click
 from flask import current_app, g
 
 from . import config
+from .task_extraction import extract_action_items
 
 
 def get_db():
@@ -317,3 +318,173 @@ def search_notes(query_text):
         (fts_query,),
     ).fetchall()
     return rows
+
+
+# --- Tasks -----------------------------------------------------------------
+
+def create_task(title, description="", priority="medium", due_date=None,
+                 is_today=False, project_id=None, source_note_id=None,
+                 source_line_text=None):
+    db = get_db()
+    cur = db.execute(
+        """INSERT INTO task (title, description, priority, due_date, is_today,
+                              project_id, source_note_id, source_line_text, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (title, description, priority, due_date, 1 if is_today else 0,
+         project_id, source_note_id, source_line_text, now_iso()),
+    )
+    db.commit()
+    return cur.lastrowid
+
+
+def update_task(task_id, title, description, priority, due_date, is_today, project_id):
+    db = get_db()
+    db.execute(
+        """UPDATE task SET title = ?, description = ?, priority = ?, due_date = ?,
+                            is_today = ?, project_id = ?
+           WHERE id = ?""",
+        (title, description, priority, due_date, 1 if is_today else 0, project_id, task_id),
+    )
+    db.commit()
+
+
+def get_task(task_id):
+    db = get_db()
+    return db.execute("SELECT * FROM task WHERE id = ?", (task_id,)).fetchone()
+
+
+def delete_task(task_id):
+    db = get_db()
+    db.execute("DELETE FROM task WHERE id = ?", (task_id,))
+    db.commit()
+
+
+def _sync_note_checkbox(note_id, line_text, checked):
+    """Flip "- [ ] <line_text>" to "- [x] <line_text>" (or back) in a note's
+    body. No-ops if the line isn't found (e.g. it came from a "TODO:" line,
+    which has no checkbox, or was edited/removed since)."""
+    db = get_db()
+    note = db.execute("SELECT body_markdown FROM note WHERE id = ?", (note_id,)).fetchone()
+    if note is None:
+        return
+    unchecked_line = f"- [ ] {line_text}"
+    checked_line = f"- [x] {line_text}"
+    old, new = (unchecked_line, checked_line) if checked else (checked_line, unchecked_line)
+    if old not in note["body_markdown"]:
+        return
+    updated_body = note["body_markdown"].replace(old, new, 1)
+    db.execute(
+        "UPDATE note SET body_markdown = ?, updated_at = ? WHERE id = ?",
+        (updated_body, now_iso(), note_id),
+    )
+    db.commit()
+
+
+def set_task_status(task_id, status):
+    db = get_db()
+    task = get_task(task_id)
+    completed_at = now_iso() if status == "done" else None
+    db.execute(
+        "UPDATE task SET status = ?, completed_at = ? WHERE id = ?",
+        (status, completed_at, task_id),
+    )
+    db.commit()
+    if task is not None and task["source_note_id"] and task["source_line_text"]:
+        _sync_note_checkbox(task["source_note_id"], task["source_line_text"],
+                             checked=(status == "done"))
+
+
+def sync_tasks_from_note(note_id, body_markdown):
+    """Create a task for each new action-item line in a note. Safe to call
+    on every save: lines already linked to a task (matched by exact text)
+    are skipped, so re-saving never creates duplicates."""
+    db = get_db()
+    existing_texts = {
+        row["source_line_text"]
+        for row in db.execute(
+            "SELECT source_line_text FROM task WHERE source_note_id = ?", (note_id,)
+        ).fetchall()
+    }
+    for text in extract_action_items(body_markdown):
+        if text in existing_texts:
+            continue
+        create_task(title=text, source_note_id=note_id, source_line_text=text)
+        existing_texts.add(text)
+
+
+def tasks_for_note(note_id):
+    db = get_db()
+    return db.execute(
+        "SELECT * FROM task WHERE source_note_id = ? ORDER BY created_at", (note_id,)
+    ).fetchall()
+
+
+def tasks_for_project(project_id):
+    db = get_db()
+    return db.execute(
+        """SELECT * FROM task WHERE project_id = ?
+           ORDER BY (status = 'done'), due_date IS NULL, due_date, id""",
+        (project_id,),
+    ).fetchall()
+
+
+def list_tasks(status=None, project_id=None, priority=None):
+    db = get_db()
+    query = "SELECT * FROM task WHERE 1 = 1"
+    params = []
+    if status:
+        query += " AND status = ?"
+        params.append(status)
+    if project_id:
+        query += " AND project_id = ?"
+        params.append(project_id)
+    if priority:
+        query += " AND priority = ?"
+        params.append(priority)
+    query += " ORDER BY (status = 'done'), due_date IS NULL, due_date, id"
+    return db.execute(query, params).fetchall()
+
+
+def list_today_flagged_tasks():
+    """Tasks flagged is_today, not yet done -- used on the Dashboard, kept
+    separate from the overdue list there."""
+    db = get_db()
+    return db.execute(
+        """SELECT * FROM task WHERE is_today = 1 AND status != 'done'
+           ORDER BY due_date IS NULL, due_date, id"""
+    ).fetchall()
+
+
+def list_today_view_tasks():
+    """Tasks for the Today checklist: anything flagged is_today (even if
+    already done today, so you can see it ticked off), plus anything
+    overdue and not yet done."""
+    db = get_db()
+    today = date.today().isoformat()
+    return db.execute(
+        """SELECT * FROM task
+           WHERE is_today = 1
+              OR (due_date IS NOT NULL AND due_date < ? AND status != 'done')
+           ORDER BY (status = 'done'), due_date IS NULL, due_date, id""",
+        (today,),
+    ).fetchall()
+
+
+def list_overdue_tasks():
+    db = get_db()
+    today = date.today().isoformat()
+    return db.execute(
+        """SELECT * FROM task WHERE due_date IS NOT NULL AND due_date < ?
+           AND status != 'done' ORDER BY due_date""",
+        (today,),
+    ).fetchall()
+
+
+def list_tasks_completed_this_week():
+    db = get_db()
+    monday = date.today() - timedelta(days=date.today().weekday())
+    return db.execute(
+        """SELECT * FROM task WHERE status = 'done' AND completed_at >= ?
+           ORDER BY completed_at DESC""",
+        (monday.isoformat(),),
+    ).fetchall()

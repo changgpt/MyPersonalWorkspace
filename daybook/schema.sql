@@ -83,3 +83,24 @@ CREATE TRIGGER IF NOT EXISTS note_au AFTER UPDATE ON note BEGIN
     INSERT INTO note_fts(rowid, title, body_markdown)
     VALUES (new.id, new.title, new.body_markdown);
 END;
+
+CREATE TABLE IF NOT EXISTS task (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'todo'
+        CHECK (status IN ('todo', 'in_progress', 'blocked', 'done')),
+    priority TEXT NOT NULL DEFAULT 'medium'
+        CHECK (priority IN ('low', 'medium', 'high')),
+    due_date TEXT,
+    is_today INTEGER NOT NULL DEFAULT 0,
+    project_id INTEGER REFERENCES project(id),
+    source_note_id INTEGER REFERENCES note(id) ON DELETE SET NULL,
+    -- Text of the "- [ ] ..." / "TODO: ..." line this task was extracted
+    -- from, used both to avoid re-creating it on every note save and to
+    -- find the line again when flipping its checkbox (see db.set_task_status).
+    -- NULL for tasks created directly (not from a note).
+    source_line_text TEXT,
+    created_at TEXT NOT NULL,
+    completed_at TEXT
+);

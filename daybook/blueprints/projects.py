@@ -16,4 +16,5 @@ def detail_view(project_id):
     if project is None:
         abort(404)
     notes = db.notes_for_project(project_id)
-    return render_template("projects/detail.html", project=project, notes=notes)
+    tasks = db.tasks_for_project(project_id)
+    return render_template("projects/detail.html", project=project, notes=notes, tasks=tasks)

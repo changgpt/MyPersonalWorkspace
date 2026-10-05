@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}People — Daybook{% endblock %}
+{% block content %}
+<div class="page-header"><h2>People</h2></div>
+{% if people %}
+<div class="card-grid">
+  {% for person in people %}
+  <div class="card">
+    <a class="card-title" href="{{ url_for('people.detail_view', person_id=person['id']) }}">{{ person['name'] }}</a>
+    {% if person['role'] %}<div class="card-meta">{{ person['role'] }}</div>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">No people yet. Tag someone on a note to add them here.</div>
+{% endif %}
+{% endblock %}

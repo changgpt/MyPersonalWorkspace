@@ -1,0 +1,6 @@
+Flask==3.0.3
+python-dotenv==1.0.1
+Markdown==3.6
+pymdown-extensions==10.8.1
+python-docx==1.1.2
+pytest==8.2.2

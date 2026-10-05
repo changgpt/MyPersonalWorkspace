@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Daybook{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='vendor/htmx.min.js') }}"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <h1>Daybook</h1>
+      <nav>
+        <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if request.endpoint == 'dashboard.index' }}">Dashboard</a>
+        <a href="{{ url_for('notes.list_view') }}" class="{{ 'active' if request.blueprint == 'notes' }}">Notes</a>
+        <a href="{{ url_for('topics.list_view') }}" class="{{ 'active' if request.blueprint == 'topics' }}">Knowledge Bank</a>
+        <a href="{{ url_for('people.list_view') }}" class="{{ 'active' if request.blueprint == 'people' }}">People</a>
+        <a href="{{ url_for('projects.list_view') }}" class="{{ 'active' if request.blueprint == 'projects' }}">Projects</a>
+        <a href="{{ url_for('settings.note_types_view') }}" class="{{ 'active' if request.blueprint == 'settings' }}">Settings</a>
+      </nav>
+    </aside>
+    <main class="main">
+      <form class="search-form" action="{{ url_for('search.search_view') }}" method="get">
+        <input type="text" name="q" placeholder="Search notes…" value="{{ request.args.get('q', '') }}">
+      </form>
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</body>
+</html>

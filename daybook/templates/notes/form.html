@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit note' if note else 'New note' }} — Daybook{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>{{ 'Edit note' if note else 'New note' }}</h2>
+</div>
+
+<form method="post" enctype="multipart/form-data"
+      action="{{ url_for('notes.update_view', note_id=note['id']) if note else url_for('notes.create_view') }}">
+
+  <label for="title">Title</label>
+  <input type="text" id="title" name="title" required value="{{ note['title'] if note else '' }}">
+
+  <div class="form-row">
+    <div>
+      <label for="note_type_id">Type</label>
+      <select id="note_type_id" name="note_type_id" required
+              hx-get="{{ url_for('notes.template_partial') }}"
+              hx-trigger="change" hx-target="#body_markdown" hx-swap="innerHTML">
+        {% for nt in note_types %}
+          <option value="{{ nt['id'] }}"
+            {{ 'selected' if (note and note['note_type_id'] == nt['id']) or (note_type and note_type['id'] == nt['id']) }}>
+            {{ nt['name'] }}{{ ' (archived)' if not nt['is_active'] }}
+          </option>
+        {% endfor %}
+      </select>
+      {% if not note %}
+        <div class="flash-hint">Changing the type replaces the body below with that type's template.</div>
+      {% endif %}
+    </div>
+    <div>
+      <label for="event_date">Date</label>
+      <input type="date" id="event_date" name="event_date" required
+             value="{{ note['event_date'] if note else today }}">
+    </div>
+  </div>
+
+  <label for="body_markdown">Body (Markdown)</label>
+  <textarea id="body_markdown" name="body_markdown">{{ note['body_markdown'] if note else (note_type['template_markdown'] if note_type else '') }}</textarea>
+
+  <label for="note_file">Or import from a file (.txt, .md, .docx — replaces the body above)</label>
+  <input type="file" id="note_file" name="note_file" accept=".txt,.md,.docx">
+
+  <div class="form-row">
+    <div>
+      <label for="people">People</label>
+      <input type="text" id="people" name="people" list="people-list" value="{{ people_text }}" placeholder="comma-separated">
+      <datalist id="people-list">
+        {% for p in existing_people %}<option value="{{ p['name'] }}">{% endfor %}
+      </datalist>
+    </div>
+    <div>
+      <label for="projects">Projects</label>
+      <input type="text" id="projects" name="projects" list="projects-list" value="{{ projects_text }}" placeholder="comma-separated">
+      <datalist id="projects-list">
+        {% for p in existing_projects %}<option value="{{ p['name'] }}">{% endfor %}
+      </datalist>
+    </div>
+    <div>
+      <label for="topics">Topics</label>
+      <input type="text" id="topics" name="topics" list="topics-list" value="{{ topics_text }}" placeholder="comma-separated">
+      <datalist id="topics-list">
+        {% for t in existing_topics %}<option value="{{ t['name'] }}">{% endfor %}
+      </datalist>
+    </div>
+  </div>
+
+  <div style="margin-top: 24px;">
+    <button class="btn" type="submit">Save note</button>
+    <a class="btn btn-secondary" href="{{ url_for('notes.detail_view', note_id=note['id']) if note else url_for('notes.list_view') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

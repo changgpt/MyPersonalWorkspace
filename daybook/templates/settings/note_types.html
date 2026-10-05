@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Note types — Daybook{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Note types</h2>
+  <a class="btn" href="{{ url_for('settings.note_type_new_view') }}">+ New type</a>
+</div>
+
+{% for nt in note_types %}
+<div class="card" style="display:flex; align-items:center; justify-content:space-between;">
+  <div>
+    <span class="tag tag-{{ nt['color'] }}">{{ nt['name'] }}</span>
+    {% if not nt['is_active'] %}<span class="card-meta">archived</span>{% endif %}
+  </div>
+  <div>
+    <a class="btn btn-secondary" href="{{ url_for('settings.note_type_edit_view', note_type_id=nt['id']) }}">Edit</a>
+    {% if nt['is_active'] %}
+    <form method="post" action="{{ url_for('settings.note_type_archive_view', note_type_id=nt['id']) }}" style="display:inline">
+      <button class="btn btn-danger" type="submit">Archive</button>
+    </form>
+    {% else %}
+    <form method="post" action="{{ url_for('settings.note_type_activate_view', note_type_id=nt['id']) }}" style="display:inline">
+      <button class="btn btn-secondary" type="submit">Restore</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

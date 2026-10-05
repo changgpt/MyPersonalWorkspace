@@ -1,0 +1,21 @@
+{% macro note_card(note) %}
+<div class="card">
+  <span class="tag tag-{{ note['type_color'] }}">{{ note['type_name'] }}</span>
+  <div style="margin-top: 8px;">
+    <a class="card-title" href="{{ url_for('notes.detail_view', note_id=note['id']) }}">{{ note['title'] }}</a>
+  </div>
+  <div class="card-meta">{{ note['event_date'] }}</div>
+</div>
+{% endmacro %}
+
+{% macro person_pill(person) %}
+<a class="pill-link" href="{{ url_for('people.detail_view', person_id=person['id']) }}">{{ person['name'] }}</a>
+{% endmacro %}
+
+{% macro project_pill(project) %}
+<a class="pill-link" href="{{ url_for('projects.detail_view', project_id=project['id']) }}">{{ project['name'] }}</a>
+{% endmacro %}
+
+{% macro topic_pill(topic) %}
+<a class="pill-link" href="{{ url_for('topics.detail_view', topic_id=topic['id']) }}">{{ topic['name'] }}</a>
+{% endmacro %}

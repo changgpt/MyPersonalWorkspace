@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Projects — Daybook{% endblock %}
+{% block content %}
+<div class="page-header"><h2>Projects</h2></div>
+{% if projects %}
+<div class="card-grid">
+  {% for project in projects %}
+  <div class="card">
+    <a class="card-title" href="{{ url_for('projects.detail_view', project_id=project['id']) }}">{{ project['name'] }}</a>
+    <div class="card-meta">{{ project['status'] }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">No projects yet. Tag one on a note to add it here.</div>
+{% endif %}
+{% endblock %}

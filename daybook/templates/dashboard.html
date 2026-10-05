@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros.html" import note_card %}
+{% block title %}Dashboard — Daybook{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Dashboard</h2>
+  <a class="btn" href="{{ url_for('notes.new_view') }}">+ New note</a>
+</div>
+
+<p class="flash-hint">
+  Tasks, the activity log, and the weekly review land in later phases — for now,
+  here's what you've been writing.
+</p>
+
+<h3>Recent notes</h3>
+{% if recent_notes %}
+  {% for note in recent_notes %}
+    {{ note_card(note) }}
+  {% endfor %}
+{% else %}
+  <div class="empty-state">No notes yet. <a href="{{ url_for('notes.new_view') }}">Create your first one</a>.</div>
+{% endif %}
+{% endblock %}

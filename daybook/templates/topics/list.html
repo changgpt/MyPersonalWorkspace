@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Knowledge Bank — Daybook{% endblock %}
+{% block content %}
+<div class="page-header"><h2>Knowledge Bank</h2></div>
+<p class="flash-hint">Every topic you've tagged on a note, gathered in one place.</p>
+{% if topics %}
+<div class="card-grid">
+  {% for topic in topics %}
+  <div class="card">
+    <a class="card-title" href="{{ url_for('topics.detail_view', topic_id=topic['id']) }}">{{ topic['name'] }}</a>
+    {% if topic['description'] %}<div class="card-meta">{{ topic['description'] }}</div>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">No topics yet. Tag one on a note to start your knowledge bank.</div>
+{% endif %}
+{% endblock %}

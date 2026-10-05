@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Search — Daybook{% endblock %}
+{% block content %}
+<div class="page-header"><h2>Search</h2></div>
+
+{% if query_text %}
+  <p class="card-meta">Results for "{{ query_text }}"</p>
+  {% if results %}
+    {% for row in results %}
+    <div class="card">
+      <span class="tag tag-{{ row['type_color'] }}">{{ row['type_name'] }}</span>
+      <div style="margin-top: 8px;">
+        <a class="card-title" href="{{ url_for('notes.detail_view', note_id=row['id']) }}">{{ row['title_html'] | safe }}</a>
+      </div>
+      <div class="card-meta">{{ row['event_date'] }}</div>
+      <p>{{ row['snippet_html'] | safe }}</p>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">No notes match "{{ query_text }}".</div>
+  {% endif %}
+{% else %}
+  <div class="empty-state">Type something in the search box above.</div>
+{% endif %}
+{% endblock %}

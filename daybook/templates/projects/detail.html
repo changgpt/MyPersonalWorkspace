@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "_macros.html" import note_card %}
+{% block title %}{{ project['name'] }} — Daybook{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>{{ project['name'] }}</h2>
+</div>
+<p class="card-meta">{{ project['status'] }}</p>
+{% if project['description'] %}<p>{{ project['description'] }}</p>{% endif %}
+
+<h3>Notes</h3>
+<p class="flash-hint">Tasks and wins linked to this project will appear here in later phases.</p>
+{% if notes %}
+  {% for note in notes %}
+    {{ note_card(note) }}
+  {% endfor %}
+{% else %}
+  <div class="empty-state">No notes tag this project yet.</div>
+{% endif %}
+{% endblock %}

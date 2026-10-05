@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_macros.html" import note_card %}
+{% block title %}{{ topic['name'] }} — Daybook{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>{{ topic['name'] }}</h2>
+</div>
+{% if topic['description'] %}<p>{{ topic['description'] }}</p>{% endif %}
+
+<h3>Notes</h3>
+{% if notes %}
+  {% for note in notes %}
+    {{ note_card(note) }}
+  {% endfor %}
+{% else %}
+  <div class="empty-state">No notes tag this topic yet.</div>
+{% endif %}
+{% endblock %}

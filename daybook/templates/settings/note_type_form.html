@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit note type' if note_type else 'New note type' }} — Daybook{% endblock %}
+{% block content %}
+<div class="page-header"><h2>{{ 'Edit note type' if note_type else 'New note type' }}</h2></div>
+
+<form method="post"
+      action="{{ url_for('settings.note_type_update_view', note_type_id=note_type['id']) if note_type else url_for('settings.note_type_create_view') }}">
+  <label for="name">Name</label>
+  <input type="text" id="name" name="name" required value="{{ note_type['name'] if note_type else '' }}">
+
+  <label for="color">Colour</label>
+  <select id="color" name="color">
+    {% for color in colors %}
+      <option value="{{ color }}" {{ 'selected' if note_type and note_type['color'] == color }}>{{ color }}</option>
+    {% endfor %}
+  </select>
+
+  <label for="template_markdown">Markdown template</label>
+  <textarea id="template_markdown" name="template_markdown">{{ note_type['template_markdown'] if note_type else '' }}</textarea>
+
+  <div style="margin-top: 24px;">
+    <button class="btn" type="submit">Save</button>
+    <a class="btn btn-secondary" href="{{ url_for('settings.note_types_view') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

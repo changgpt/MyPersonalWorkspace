@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_macros.html" import note_card %}
+{% block title %}{{ person['name'] }} — Daybook{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>{{ person['name'] }}</h2>
+</div>
+{% if person['role'] %}<p class="card-meta">{{ person['role'] }}</p>{% endif %}
+
+<h3>Interactions</h3>
+<p class="flash-hint">Tasks and wins linked to {{ person['name'] }} will appear here in later phases.</p>
+{% if notes %}
+  {% for note in notes %}
+    {{ note_card(note) }}
+  {% endfor %}
+{% else %}
+  <div class="empty-state">No notes tag {{ person['name'] }} yet.</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Wins — Daybook{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Wins</h2>
+  <div>
+    <a class="btn btn-secondary" href="{{ url_for('wins.export_view') }}">Export Markdown</a>
+    <a class="btn" href="{{ url_for('wins.new_view') }}">+ New win</a>
+  </div>
+</div>
+
+<form class="filter-bar" method="get">
+  <select name="project">
+    <option value="">All projects</option>
+    {% for p in projects %}
+      <option value="{{ p['id'] }}" {{ 'selected' if filters.project_id == p['id'] }}>{{ p['name'] }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn btn-secondary" type="submit">Filter</button>
+  <a class="btn btn-secondary" href="{{ url_for('wins.list_view') }}">Clear</a>
+</form>
+
+{% if wins %}
+  {% for win in wins %}
+  <div class="card">
+    <a class="card-title" href="{{ url_for('wins.detail_view', win_id=win['id']) }}">{{ win['title'] }}</a>
+    <div class="card-meta">{{ win['win_date'] }}</div>
+  </div>
+  {% endfor %}
+{% else %}
+<div class="empty-state">No wins logged yet.</div>
+{% endif %}
+{% endblock %}

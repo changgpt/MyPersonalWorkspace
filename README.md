@@ -65,8 +65,21 @@ python -m pytest tests/ -v
 - The **Dashboard** now shows today's tasks, overdue tasks, and what you've
   completed this week.
 
-The activity log, skills tracker, wins log, and weekly review are planned
-for Phase 3.
+**Phase 3 — activity log, skills, wins, weekly review:**
+- **Activity Log** — an automatic timeline of notes created, tasks
+  completed, and wins, plus your own manual entries (date, description,
+  project, time spent).
+- **Skills** — track a level (1–5) per skill, see its level history, and
+  tag "skill used/learned" from any note, task, log entry, or win.
+- **Wins** — quick-add a win, or click "Mark as win" on a completed task to
+  pre-fill the form. Exportable to Markdown for a CV or performance review.
+- **Weekly Review** — one page per ISO week (navigate back/forward), with
+  an auto-generated summary (notes by type, tasks completed/open, skills
+  touched, wins) plus your own reflection fields, also exportable to
+  Markdown.
+
+Phase 4 (optional AI features) and Phase 5 (export/backup, keyboard
+shortcuts, dark mode) are still to come.
 
 ## Project layout
 

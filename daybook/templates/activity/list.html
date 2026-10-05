@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Activity log — Daybook{% endblock %}
+{% block content %}
+<div class="page-header"><h2>Activity log</h2></div>
+
+<form class="filter-bar" method="get">
+  <select name="project">
+    <option value="">All projects</option>
+    {% for p in projects %}
+      <option value="{{ p['id'] }}" {{ 'selected' if filters.project_id == p['id'] }}>{{ p['name'] }}</option>
+    {% endfor %}
+  </select>
+  <input type="date" name="from" value="{{ filters.date_from or '' }}">
+  <input type="date" name="to" value="{{ filters.date_to or '' }}">
+  <button class="btn btn-secondary" type="submit">Filter</button>
+  <a class="btn btn-secondary" href="{{ url_for('activity.list_view') }}">Clear</a>
+</form>
+
+<form class="filter-bar" method="post" action="{{ url_for('activity.create_view') }}">
+  <input type="date" name="entry_date" required value="{{ filters.date_to or '' }}">
+  <input type="text" name="description" placeholder="What did you do?" required style="width: 280px;">
+  <select name="project_id">
+    <option value="">No project</option>
+    {% for p in projects %}
+      <option value="{{ p['id'] }}">{{ p['name'] }}</option>
+    {% endfor %}
+  </select>
+  <input type="text" name="time_spent" placeholder="Time spent (optional)" style="width: 140px;">
+  <button class="btn" type="submit">Add</button>
+</form>
+
+{% if items %}
+  {% for item in items %}
+  <div class="card">
+    <span class="tag tag-{{ {'note': 'clay', 'task': 'sage', 'win': 'ochre', 'log_entry': 'slate'}[item.kind] }}">
+      {{ item.kind.replace('_', ' ') }}
+    </span>
+    <div style="margin-top: 8px;">
+      {% if item.kind == 'note' %}
+        <a class="card-title" href="{{ url_for('notes.detail_view', note_id=item.entity_id) }}">{{ item.title }}</a>
+      {% elif item.kind == 'task' %}
+        <a class="card-title" href="{{ url_for('tasks.edit_view', task_id=item.entity_id) }}">{{ item.title }}</a>
+      {% elif item.kind == 'win' %}
+        <a class="card-title" href="{{ url_for('wins.detail_view', win_id=item.entity_id) }}">{{ item.title }}</a>
+      {% else %}
+        <a class="card-title" href="{{ url_for('activity.log_entry_edit_view', log_entry_id=item.entity_id) }}">{{ item.title }}</a>
+      {% endif %}
+    </div>
+    <div class="card-meta">{{ item.occurred_at[:10] if item.occurred_at else '' }}</div>
+  </div>
+  {% endfor %}
+{% else %}
+<div class="empty-state">Nothing in this range yet.</div>
+{% endif %}
+{% endblock %}

@@ -104,3 +104,69 @@ CREATE TABLE IF NOT EXISTS task (
     created_at TEXT NOT NULL,
     completed_at TEXT
 );
+
+CREATE TABLE IF NOT EXISTS skill (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    category TEXT NOT NULL DEFAULT 'technical'
+        CHECK (category IN ('technical', 'financial', 'communication', 'domain')),
+    level INTEGER NOT NULL DEFAULT 1 CHECK (level BETWEEN 1 AND 5),
+    notes TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+
+-- One row per level change, so a skill's page can show how it grew over
+-- time. The current level also lives on `skill` itself for quick display.
+CREATE TABLE IF NOT EXISTS skill_level_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    skill_id INTEGER NOT NULL REFERENCES skill(id) ON DELETE CASCADE,
+    level INTEGER NOT NULL CHECK (level BETWEEN 1 AND 5),
+    changed_at TEXT NOT NULL
+);
+
+-- Links a skill to whatever it was practiced on. entity_type/entity_id is
+-- a lightweight polymorphic reference (not a real foreign key, since SQLite
+-- can't target one of several tables) rather than four separate nullable
+-- FK columns.
+CREATE TABLE IF NOT EXISTS skill_evidence (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    skill_id INTEGER NOT NULL REFERENCES skill(id) ON DELETE CASCADE,
+    entity_type TEXT NOT NULL CHECK (entity_type IN ('note', 'task', 'log_entry', 'win')),
+    entity_id INTEGER NOT NULL,
+    comment TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS log_entry (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entry_date TEXT NOT NULL,
+    description TEXT NOT NULL,
+    project_id INTEGER REFERENCES project(id),
+    time_spent TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS win (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    win_date TEXT NOT NULL,
+    title TEXT NOT NULL,
+    what_i_did TEXT NOT NULL DEFAULT '',
+    impact_result TEXT NOT NULL DEFAULT '',
+    project_id INTEGER REFERENCES project(id),
+    source_task_id INTEGER REFERENCES task(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS win_person (
+    win_id INTEGER NOT NULL REFERENCES win(id) ON DELETE CASCADE,
+    person_id INTEGER NOT NULL REFERENCES person(id) ON DELETE CASCADE,
+    PRIMARY KEY (win_id, person_id)
+);
+
+CREATE TABLE IF NOT EXISTS weekly_review (
+    week TEXT PRIMARY KEY,  -- ISO week, e.g. "2026-W41"
+    went_well TEXT NOT NULL DEFAULT '',
+    to_improve TEXT NOT NULL DEFAULT '',
+    focus_next_week TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL
+);

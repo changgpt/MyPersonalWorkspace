@@ -165,13 +165,19 @@ def get_topic(topic_id):
 
 # --- Notes ---------------------------------------------------------------
 
-def _set_note_tags(note_id, table, column, tag_ids):
+def _set_join_rows(entity_id, table, entity_column, tag_column, tag_ids):
+    """Replace every row in a join table (note_person, win_person, ...) for
+    one entity. Shared by notes and wins, which both tag people/projects."""
     db = get_db()
-    db.execute(f"DELETE FROM {table} WHERE note_id = ?", (note_id,))
+    db.execute(f"DELETE FROM {table} WHERE {entity_column} = ?", (entity_id,))
     db.executemany(
-        f"INSERT INTO {table} (note_id, {column}) VALUES (?, ?)",
-        [(note_id, tag_id) for tag_id in tag_ids],
+        f"INSERT INTO {table} ({entity_column}, {tag_column}) VALUES (?, ?)",
+        [(entity_id, tag_id) for tag_id in tag_ids],
     )
+
+
+def _set_note_tags(note_id, table, column, tag_ids):
+    _set_join_rows(note_id, table, "note_id", column, tag_ids)
 
 
 def create_note(title, note_type_id, event_date, body_markdown,
@@ -488,3 +494,392 @@ def list_tasks_completed_this_week():
            ORDER BY completed_at DESC""",
         (monday.isoformat(),),
     ).fetchall()
+
+
+# --- Skills ------------------------------------------------------------
+
+def create_skill(name, category="technical", level=1, notes=""):
+    db = get_db()
+    cur = db.execute(
+        "INSERT INTO skill (name, category, level, notes, created_at) VALUES (?, ?, ?, ?, ?)",
+        (name, category, level, notes, now_iso()),
+    )
+    skill_id = cur.lastrowid
+    db.execute(
+        "INSERT INTO skill_level_history (skill_id, level, changed_at) VALUES (?, ?, ?)",
+        (skill_id, level, now_iso()),
+    )
+    db.commit()
+    return skill_id
+
+
+def find_or_create_skill(name):
+    db = get_db()
+    name = name.strip()
+    row = db.execute(
+        "SELECT id FROM skill WHERE name = ? COLLATE NOCASE", (name,)
+    ).fetchone()
+    if row:
+        return row["id"]
+    return create_skill(name)
+
+
+def update_skill(skill_id, name, category, notes, level):
+    db = get_db()
+    current = get_skill(skill_id)
+    db.execute(
+        "UPDATE skill SET name = ?, category = ?, notes = ?, level = ? WHERE id = ?",
+        (name, category, notes, level, skill_id),
+    )
+    if current is not None and current["level"] != level:
+        db.execute(
+            "INSERT INTO skill_level_history (skill_id, level, changed_at) VALUES (?, ?, ?)",
+            (skill_id, level, now_iso()),
+        )
+    db.commit()
+
+
+def get_skill(skill_id):
+    db = get_db()
+    return db.execute("SELECT * FROM skill WHERE id = ?", (skill_id,)).fetchone()
+
+
+def list_skills():
+    db = get_db()
+    return db.execute("SELECT * FROM skill ORDER BY category, name").fetchall()
+
+
+def skill_level_history(skill_id):
+    db = get_db()
+    return db.execute(
+        "SELECT * FROM skill_level_history WHERE skill_id = ? ORDER BY changed_at",
+        (skill_id,),
+    ).fetchall()
+
+
+# entity_type -> (table, id_column, title_column) for resolving evidence
+# back to something displayable without four separate evidence tables.
+_EVIDENCE_ENTITY_TABLES = {
+    "note": ("note", "id", "title"),
+    "task": ("task", "id", "title"),
+    "log_entry": ("log_entry", "id", "description"),
+    "win": ("win", "id", "title"),
+}
+
+
+def add_skill_evidence(skill_name, entity_type, entity_id, comment=""):
+    db = get_db()
+    skill_id = find_or_create_skill(skill_name)
+    db.execute(
+        """INSERT INTO skill_evidence (skill_id, entity_type, entity_id, comment, created_at)
+           VALUES (?, ?, ?, ?, ?)""",
+        (skill_id, entity_type, entity_id, comment, now_iso()),
+    )
+    db.commit()
+
+
+def evidence_for_entity(entity_type, entity_id):
+    db = get_db()
+    return db.execute(
+        """SELECT skill_evidence.*, skill.name AS skill_name
+           FROM skill_evidence JOIN skill ON skill.id = skill_evidence.skill_id
+           WHERE entity_type = ? AND entity_id = ? ORDER BY skill_evidence.created_at""",
+        (entity_type, entity_id),
+    ).fetchall()
+
+
+def evidence_for_skill(skill_id):
+    """Each evidence row plus a human-readable title for whatever it's
+    attached to, resolved from _EVIDENCE_ENTITY_TABLES."""
+    db = get_db()
+    rows = db.execute(
+        "SELECT * FROM skill_evidence WHERE skill_id = ? ORDER BY created_at DESC",
+        (skill_id,),
+    ).fetchall()
+    results = []
+    for row in rows:
+        table, id_column, title_column = _EVIDENCE_ENTITY_TABLES[row["entity_type"]]
+        entity = db.execute(
+            f"SELECT {title_column} AS title FROM {table} WHERE {id_column} = ?",
+            (row["entity_id"],),
+        ).fetchone()
+        results.append({
+            "id": row["id"],
+            "entity_type": row["entity_type"],
+            "entity_id": row["entity_id"],
+            "entity_title": entity["title"] if entity else "(deleted)",
+            "comment": row["comment"],
+            "created_at": row["created_at"],
+        })
+    return results
+
+
+def skills_touched_between(date_from, date_to):
+    db = get_db()
+    rows = db.execute(
+        """SELECT DISTINCT skill.id, skill.name FROM skill
+           JOIN skill_evidence ON skill_evidence.skill_id = skill.id
+           WHERE date(skill_evidence.created_at) BETWEEN ? AND ?
+           ORDER BY skill.name""",
+        (date_from, date_to),
+    ).fetchall()
+    return rows
+
+
+# --- Log entries (manual activity log items) ----------------------------
+
+def create_log_entry(entry_date, description, project_id=None, time_spent=None):
+    db = get_db()
+    cur = db.execute(
+        """INSERT INTO log_entry (entry_date, description, project_id, time_spent, created_at)
+           VALUES (?, ?, ?, ?, ?)""",
+        (entry_date, description, project_id, time_spent, now_iso()),
+    )
+    db.commit()
+    return cur.lastrowid
+
+
+def update_log_entry(log_entry_id, entry_date, description, project_id, time_spent):
+    db = get_db()
+    db.execute(
+        """UPDATE log_entry SET entry_date = ?, description = ?, project_id = ?, time_spent = ?
+           WHERE id = ?""",
+        (entry_date, description, project_id, time_spent, log_entry_id),
+    )
+    db.commit()
+
+
+def get_log_entry(log_entry_id):
+    db = get_db()
+    return db.execute("SELECT * FROM log_entry WHERE id = ?", (log_entry_id,)).fetchone()
+
+
+def delete_log_entry(log_entry_id):
+    db = get_db()
+    db.execute("DELETE FROM log_entry WHERE id = ?", (log_entry_id,))
+    db.commit()
+
+
+# --- Wins ----------------------------------------------------------------
+
+def create_win(win_date, title, what_i_did="", impact_result="", project_id=None,
+                source_task_id=None, person_ids=None):
+    db = get_db()
+    cur = db.execute(
+        """INSERT INTO win (win_date, title, what_i_did, impact_result, project_id,
+                             source_task_id, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        (win_date, title, what_i_did, impact_result, project_id, source_task_id, now_iso()),
+    )
+    win_id = cur.lastrowid
+    _set_join_rows(win_id, "win_person", "win_id", "person_id", person_ids or [])
+    db.commit()
+    return win_id
+
+
+def update_win(win_id, win_date, title, what_i_did, impact_result, project_id, person_ids=None):
+    db = get_db()
+    db.execute(
+        """UPDATE win SET win_date = ?, title = ?, what_i_did = ?, impact_result = ?,
+                           project_id = ? WHERE id = ?""",
+        (win_date, title, what_i_did, impact_result, project_id, win_id),
+    )
+    _set_join_rows(win_id, "win_person", "win_id", "person_id", person_ids or [])
+    db.commit()
+
+
+def get_win(win_id):
+    db = get_db()
+    return db.execute("SELECT * FROM win WHERE id = ?", (win_id,)).fetchone()
+
+
+def delete_win(win_id):
+    db = get_db()
+    db.execute("DELETE FROM win WHERE id = ?", (win_id,))
+    db.commit()
+
+
+def people_for_win(win_id):
+    db = get_db()
+    return db.execute(
+        """SELECT person.* FROM person JOIN win_person ON win_person.person_id = person.id
+           WHERE win_person.win_id = ? ORDER BY person.name""",
+        (win_id,),
+    ).fetchall()
+
+
+def list_wins(project_id=None, date_from=None, date_to=None):
+    db = get_db()
+    query = "SELECT * FROM win WHERE 1 = 1"
+    params = []
+    if project_id:
+        query += " AND project_id = ?"
+        params.append(project_id)
+    if date_from:
+        query += " AND win_date >= ?"
+        params.append(date_from)
+    if date_to:
+        query += " AND win_date <= ?"
+        params.append(date_to)
+    query += " ORDER BY win_date DESC, id DESC"
+    return db.execute(query, params).fetchall()
+
+
+def wins_for_project(project_id):
+    return list_wins(project_id=project_id)
+
+
+# --- Activity log ----------------------------------------------------------
+
+def list_activity(date_from=None, date_to=None, project_id=None):
+    """Merge notes created, tasks completed, wins, and manual log entries
+    into one timeline, newest first. Each source is a small, separate query
+    (rather than one SQL UNION) since the four kinds have different shapes
+    -- simpler to read than SQL that reconciles differing shapes."""
+    db = get_db()
+    items = []
+
+    note_query = """
+        SELECT DISTINCT note.id, note.title, note.created_at AS occurred_at
+        FROM note LEFT JOIN note_project ON note_project.note_id = note.id
+        WHERE 1 = 1
+    """
+    params = []
+    if project_id:
+        note_query += " AND note_project.project_id = ?"
+        params.append(project_id)
+    if date_from:
+        note_query += " AND date(note.created_at) >= ?"
+        params.append(date_from)
+    if date_to:
+        note_query += " AND date(note.created_at) <= ?"
+        params.append(date_to)
+    for row in db.execute(note_query, params).fetchall():
+        items.append(dict(kind="note", occurred_at=row["occurred_at"],
+                           title=row["title"], entity_id=row["id"]))
+
+    task_query = "SELECT id, title, completed_at AS occurred_at FROM task WHERE status = 'done'"
+    params = []
+    if project_id:
+        task_query += " AND project_id = ?"
+        params.append(project_id)
+    if date_from:
+        task_query += " AND date(completed_at) >= ?"
+        params.append(date_from)
+    if date_to:
+        task_query += " AND date(completed_at) <= ?"
+        params.append(date_to)
+    for row in db.execute(task_query, params).fetchall():
+        items.append(dict(kind="task", occurred_at=row["occurred_at"],
+                           title=row["title"], entity_id=row["id"]))
+
+    win_query = "SELECT id, title, win_date AS occurred_at FROM win WHERE 1 = 1"
+    params = []
+    if project_id:
+        win_query += " AND project_id = ?"
+        params.append(project_id)
+    if date_from:
+        win_query += " AND win_date >= ?"
+        params.append(date_from)
+    if date_to:
+        win_query += " AND win_date <= ?"
+        params.append(date_to)
+    for row in db.execute(win_query, params).fetchall():
+        items.append(dict(kind="win", occurred_at=row["occurred_at"],
+                           title=row["title"], entity_id=row["id"]))
+
+    log_query = "SELECT id, description, entry_date AS occurred_at FROM log_entry WHERE 1 = 1"
+    params = []
+    if project_id:
+        log_query += " AND project_id = ?"
+        params.append(project_id)
+    if date_from:
+        log_query += " AND entry_date >= ?"
+        params.append(date_from)
+    if date_to:
+        log_query += " AND entry_date <= ?"
+        params.append(date_to)
+    for row in db.execute(log_query, params).fetchall():
+        items.append(dict(kind="log_entry", occurred_at=row["occurred_at"],
+                           title=row["description"], entity_id=row["id"]))
+
+    items.sort(key=lambda item: item["occurred_at"] or "", reverse=True)
+    return items
+
+
+# --- Weekly review -----------------------------------------------------
+
+def current_week_str():
+    year, week, _ = date.today().isocalendar()
+    return f"{year}-W{week:02d}"
+
+
+def week_str_to_monday(week_str):
+    year, week = week_str.split("-W")
+    return date.fromisocalendar(int(year), int(week), 1)
+
+
+def adjacent_week_str(week_str, delta_weeks):
+    monday = week_str_to_monday(week_str) + timedelta(weeks=delta_weeks)
+    year, week, _ = monday.isocalendar()
+    return f"{year}-W{week:02d}"
+
+
+def get_weekly_review(week_str):
+    db = get_db()
+    return db.execute("SELECT * FROM weekly_review WHERE week = ?", (week_str,)).fetchone()
+
+
+def save_weekly_review(week_str, went_well, to_improve, focus_next_week):
+    db = get_db()
+    db.execute(
+        """INSERT INTO weekly_review (week, went_well, to_improve, focus_next_week, updated_at)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT (week) DO UPDATE SET
+               went_well = excluded.went_well,
+               to_improve = excluded.to_improve,
+               focus_next_week = excluded.focus_next_week,
+               updated_at = excluded.updated_at""",
+        (week_str, went_well, to_improve, focus_next_week, now_iso()),
+    )
+    db.commit()
+
+
+def weekly_review_summary(week_str):
+    db = get_db()
+    monday = week_str_to_monday(week_str)
+    sunday = monday + timedelta(days=6)
+    date_from, date_to = monday.isoformat(), sunday.isoformat()
+
+    notes_by_type = db.execute(
+        """SELECT note_type.name AS type_name, COUNT(*) AS count
+           FROM note JOIN note_type ON note_type.id = note.note_type_id
+           WHERE date(note.created_at) BETWEEN ? AND ?
+           GROUP BY note_type.name ORDER BY note_type.name""",
+        (date_from, date_to),
+    ).fetchall()
+
+    tasks_completed = db.execute(
+        """SELECT * FROM task WHERE status = 'done'
+           AND date(completed_at) BETWEEN ? AND ? ORDER BY completed_at""",
+        (date_from, date_to),
+    ).fetchall()
+
+    tasks_open_or_overdue = db.execute(
+        "SELECT * FROM task WHERE status != 'done' ORDER BY due_date IS NULL, due_date"
+    ).fetchall()
+
+    wins = db.execute(
+        "SELECT * FROM win WHERE win_date BETWEEN ? AND ? ORDER BY win_date",
+        (date_from, date_to),
+    ).fetchall()
+
+    return dict(
+        week_start=monday,
+        week_end=sunday,
+        notes_by_type=notes_by_type,
+        tasks_completed=tasks_completed,
+        tasks_open_or_overdue=tasks_open_or_overdue,
+        skills_touched=skills_touched_between(date_from, date_to),
+        wins=wins,
+    )

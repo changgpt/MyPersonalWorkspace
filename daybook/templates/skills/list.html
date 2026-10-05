@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Skills — Daybook{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Skills</h2>
+  <a class="btn" href="{{ url_for('skills.new_view') }}">+ New skill</a>
+</div>
+
+{% if skills %}
+<div class="card-grid">
+  {% for skill in skills %}
+  <div class="card">
+    <a class="card-title" href="{{ url_for('skills.detail_view', skill_id=skill['id']) }}">{{ skill['name'] }}</a>
+    <div class="card-meta">{{ skill['category'] }} · level {{ skill['level'] }}/5</div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">No skills yet. Add one, or tag "skill used" from any note, task, log entry, or win.</div>
+{% endif %}
+{% endblock %}

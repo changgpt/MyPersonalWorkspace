@@ -1,0 +1,17 @@
+{% if evidence %}
+<div style="margin: 8px 0;">
+  {% for item in evidence %}
+    <span class="tag tag-moss" title="{{ item['comment'] }}">{{ item['skill_name'] }}</span>
+  {% endfor %}
+</div>
+{% endif %}
+<form method="post" action="{{ url_for('skills.add_evidence_view') }}" class="filter-bar" style="margin-top: 4px;">
+  <input type="hidden" name="entity_type" value="{{ entity_type }}">
+  <input type="hidden" name="entity_id" value="{{ entity_id }}">
+  <input type="text" name="skill_name" list="skill-names" placeholder="Tag a skill used/learned…" required>
+  <datalist id="skill-names">
+    {% for s in all_skills %}<option value="{{ s['name'] }}">{% endfor %}
+  </datalist>
+  <input type="text" name="comment" placeholder="Comment (optional)">
+  <button class="btn btn-secondary" type="submit">Tag skill</button>
+</form>

@@ -68,6 +68,9 @@ def edit_view(task_id):
     return render_template(
         "tasks/form.html", task=task, projects=db.list_projects(),
         priorities=PRIORITIES,
+        evidence=db.evidence_for_entity("task", task_id),
+        all_skills=db.list_skills(),
+        entity_type="task", entity_id=task_id,
     )
 
 

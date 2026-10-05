@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit win' if win else 'New win' }} — Daybook{% endblock %}
+{% block content %}
+<div class="page-header"><h2>{{ 'Edit win' if win else 'New win' }}</h2></div>
+
+<form method="post"
+      action="{{ url_for('wins.update_view', win_id=win['id']) if win else url_for('wins.create_view') }}">
+  {% if source_task %}
+    <input type="hidden" name="source_task_id" value="{{ source_task['id'] }}">
+    <p class="flash-hint">Pre-filled from task: {{ source_task['title'] }}</p>
+  {% endif %}
+
+  <label for="title">Title</label>
+  <input type="text" id="title" name="title" required
+         value="{{ win['title'] if win else (source_task['title'] if source_task else '') }}">
+
+  <div class="form-row">
+    <div>
+      <label for="win_date">Date</label>
+      <input type="date" id="win_date" name="win_date" required value="{{ win['win_date'] if win else today }}">
+    </div>
+    <div>
+      <label for="project_id">Project</label>
+      <select id="project_id" name="project_id">
+        <option value="">None</option>
+        {% for p in projects %}
+          <option value="{{ p['id'] }}"
+            {{ 'selected' if (win and win['project_id'] == p['id']) or (source_task and source_task['project_id'] == p['id']) }}>
+            {{ p['name'] }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <label for="what_i_did">What I did</label>
+  <textarea id="what_i_did" name="what_i_did" style="min-height:100px;">{{ win['what_i_did'] if win else (source_task['description'] if source_task else '') }}</textarea>
+
+  <label for="impact_result">Impact / result</label>
+  <textarea id="impact_result" name="impact_result" style="min-height:100px;">{{ win['impact_result'] if win else '' }}</textarea>
+
+  <label for="people">People involved</label>
+  <input type="text" id="people" name="people" list="people-list" value="{{ people_text }}" placeholder="comma-separated">
+  <datalist id="people-list">
+    {% for p in existing_people %}<option value="{{ p['name'] }}">{% endfor %}
+  </datalist>
+
+  <div style="margin-top: 24px;">
+    <button class="btn" type="submit">Save</button>
+    <a class="btn btn-secondary" href="{{ url_for('wins.list_view') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

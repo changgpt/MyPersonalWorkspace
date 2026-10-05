@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ skill['name'] }} — Daybook{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>{{ skill['name'] }}</h2>
+  <a class="btn btn-secondary" href="{{ url_for('skills.edit_view', skill_id=skill['id']) }}">Edit</a>
+</div>
+<p class="card-meta">{{ skill['category'] }} · current level {{ skill['level'] }}/5</p>
+{% if skill['notes'] %}<p>{{ skill['notes'] }}</p>{% endif %}
+
+<h3>Level history</h3>
+<ul class="task-checklist">
+  {% for entry in level_history %}
+  <li class="task-row">
+    <span class="task-title">Level {{ entry['level'] }}</span>
+    <span class="card-meta">{{ entry['changed_at'][:10] }}</span>
+  </li>
+  {% endfor %}
+</ul>
+
+<h3>Evidence</h3>
+{% if evidence %}
+<ul class="task-checklist">
+  {% for item in evidence %}
+  <li class="task-row">
+    <span class="task-title">
+      {% if item.entity_type == 'note' %}
+        <a href="{{ url_for('notes.detail_view', note_id=item.entity_id) }}">{{ item.entity_title }}</a>
+      {% elif item.entity_type == 'task' %}
+        <a href="{{ url_for('tasks.edit_view', task_id=item.entity_id) }}">{{ item.entity_title }}</a>
+      {% elif item.entity_type == 'win' %}
+        <a href="{{ url_for('wins.detail_view', win_id=item.entity_id) }}">{{ item.entity_title }}</a>
+      {% elif item.entity_type == 'log_entry' %}
+        <a href="{{ url_for('activity.log_entry_edit_view', log_entry_id=item.entity_id) }}">{{ item.entity_title }}</a>
+      {% endif %}
+    </span>
+    <span class="tag tag-slate">{{ item.entity_type.replace('_', ' ') }}</span>
+    {% if item.comment %}<span class="card-meta">{{ item.comment }}</span>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="empty-state">No evidence tagged yet. Tag "skill used" from any note, task, log entry, or win.</div>
+{% endif %}
+{% endblock %}

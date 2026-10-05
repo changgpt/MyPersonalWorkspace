@@ -37,8 +37,10 @@ daybook/
   markdown_utils.py    # render_markdown(text) -> HTML
   docx_utils.py         # docx_bytes_to_markdown(bytes) -> Markdown
   task_extraction.py    # extract_action_items(markdown) -> ["line text", ...]
+  tag_utils.py           # shared comma-separated-tag-field parsing (notes + wins)
   blueprints/           # one file per feature area (notes, people, projects,
-                        # tasks, topics, search, settings, dashboard)
+                        # tasks, topics, search, settings, dashboard, skills,
+                        # wins, activity, weekly_review)
   templates/            # Jinja templates, mirroring the blueprints
   static/style.css       # warm-neutral design system (CSS custom properties)
   static/board.js        # vanilla JS drag-and-drop for the task board
@@ -91,6 +93,31 @@ data/                    # git-ignored; daybook.db lives here
   on failure it just alerts and relies on a refresh to show the true state
   — acceptable for a single-user local tool, not a model to extend without
   reconsidering if this app ever needs to be more robust about it.
+- **SkillEvidence is a lightweight polymorphic link**, not four nullable FK
+  columns: `entity_type` (`note`/`task`/`log_entry`/`win`) + `entity_id`,
+  resolved back to a title via `_EVIDENCE_ENTITY_TABLES` in `db.py`. The
+  "tag a skill" UI (`templates/skills/_tagger.html`, posts to
+  `POST /skills/evidence`) is one include shared by note detail, task edit,
+  win detail, and the log entry edit page — don't duplicate this form.
+  Every view that includes it must pass `entity_type`, `entity_id`,
+  `evidence` (from `db.evidence_for_entity`), and `all_skills`
+  (from `db.list_skills()`).
+- **Win → people is a join table** (`win_person`, plural "people involved"
+  in the spec); **Win → project is a single column** (singular "project",
+  matching how `task.project_id` already works). "Links to related
+  notes/tasks" is implemented as a single optional `source_task_id`, set by
+  the "Mark as win" link on a completed task — not an open-ended
+  many-to-many note/task picker.
+- **Activity log is a Python-side merge**, not a SQL UNION: `db.list_activity`
+  runs one small query per source (notes created, tasks completed, wins,
+  manual log entries) and sorts the combined list in Python. The four
+  sources don't share a schema, so this reads far more clearly than SQL
+  that reconciles mismatched columns.
+- **Weekly review** keys off an ISO week string like `"2026-W41"`
+  (`db.current_week_str`/`week_str_to_monday`/`adjacent_week_str`). Its
+  auto-summary is computed on the fly from existing tables, not stored —
+  only the three reflection fields persist, upserted per week in
+  `weekly_review`.
 
 ## Running and testing
 
@@ -107,13 +134,13 @@ python -m pytest tests/ -v
 Tests use a temporary SQLite file per test (see `tests/conftest.py`), never
 the real `data/daybook.db`.
 
-## Data model (Phase 1 + 2)
+## Data model (Phase 1 + 2 + 3)
 
 `note_type`, `person`, `project`, `topic`, `note`, three join tables
 (`note_person`, `note_project`, `note_topic`), the `note_fts` virtual table,
-and `task` (status/priority/due_date/is_today/project_id/source_note_id/
-source_line_text). `LogEntry`, `Skill`, `SkillEvidence`, `Win`, and
-`WeeklyReview` are not implemented yet — they arrive in Phase 3.
+`task` (status/priority/due_date/is_today/project_id/source_note_id/
+source_line_text), `skill` + `skill_level_history` + `skill_evidence`,
+`log_entry`, `win` + `win_person`, and `weekly_review`.
 
 Note: `task` has no `person` field (matches the original spec's data
 model), so a task isn't directly linked to a person — only to a project
@@ -128,8 +155,11 @@ and/or its source note. The People page still only shows notes.
   auto-extraction of `- [ ]` / `TODO:` lines from notes into linked tasks
   (dedup on resave, one-way checkbox sync back to the note), dashboard
   now shows today's tasks / overdue / completed-this-week.
-- **Phase 3 (not started):** activity log, skills tracker, wins log, weekly
-  review.
+- **Phase 3 (done):** activity log (auto timeline + manual entries), skills
+  tracker (level history + evidence tagged from any note/task/log
+  entry/win), wins log ("Mark as win" from a completed task, Markdown
+  export), weekly review (auto-summary + reflection fields, prev/next
+  week nav, Markdown export).
 - **Phase 4 (not started):** optional AI features via Anthropic API, off by
   default.
 - **Phase 5 (not started):** export/backup, keyboard shortcuts, dark mode,

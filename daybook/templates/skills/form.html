@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit skill' if skill else 'New skill' }} — Daybook{% endblock %}
+{% block content %}
+<div class="page-header"><h2>{{ 'Edit skill' if skill else 'New skill' }}</h2></div>
+
+<form method="post"
+      action="{{ url_for('skills.update_view', skill_id=skill['id']) if skill else url_for('skills.create_view') }}">
+  <label for="name">Name</label>
+  <input type="text" id="name" name="name" required value="{{ skill['name'] if skill else '' }}">
+
+  <div class="form-row">
+    <div>
+      <label for="category">Category</label>
+      <select id="category" name="category">
+        {% for c in categories %}
+          <option value="{{ c }}" {{ 'selected' if skill and skill['category'] == c }}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="level">Level (1–5)</label>
+      <select id="level" name="level">
+        {% for lvl in [1, 2, 3, 4, 5] %}
+          <option value="{{ lvl }}" {{ 'selected' if skill and skill['level'] == lvl }}>{{ lvl }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <label for="notes">Notes</label>
+  <textarea id="notes" name="notes" style="min-height:100px;">{{ skill['notes'] if skill else '' }}</textarea>
+
+  <div style="margin-top: 24px;">
+    <button class="btn" type="submit">Save</button>
+    <a class="btn btn-secondary" href="{{ url_for('skills.list_view') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

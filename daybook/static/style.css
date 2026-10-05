@@ -138,6 +138,8 @@ label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom
 
 .card-meta { color: var(--text-faint); font-size: 13px; margin-top: 4px; }
 
+.card ul { margin: 8px 0 0; padding-left: 18px; font-size: 14px; }
+
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));

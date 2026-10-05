@@ -4,22 +4,10 @@ from flask import Blueprint, abort, redirect, render_template, request, url_for
 
 from .. import db
 from ..docx_utils import docx_bytes_to_markdown
+from ..tag_utils import tag_names_as_text as _tag_names_as_text
+from ..tag_utils import tag_names_to_ids as _tag_names_to_ids
 
 bp = Blueprint("notes", __name__, url_prefix="/notes")
-
-
-def _parse_tag_names(raw):
-    if not raw:
-        return []
-    return [name.strip() for name in raw.split(",") if name.strip()]
-
-
-def _tag_names_to_ids(raw, find_or_create):
-    return [find_or_create(name) for name in _parse_tag_names(raw)]
-
-
-def _tag_names_as_text(rows):
-    return ", ".join(row["name"] for row in rows)
 
 
 def _body_from_form(form, files):
@@ -106,7 +94,12 @@ def detail_view(note_id):
         abort(404)
     tags = db.get_note_tags(note_id)
     linked_tasks = db.tasks_for_note(note_id)
-    return render_template("notes/detail.html", note=note, tags=tags, linked_tasks=linked_tasks)
+    return render_template(
+        "notes/detail.html", note=note, tags=tags, linked_tasks=linked_tasks,
+        evidence=db.evidence_for_entity("note", note_id),
+        all_skills=db.list_skills(),
+        entity_type="note", entity_id=note_id,
+    )
 
 
 @bp.route("/<int:note_id>/edit")

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_pill %}
+{% block title %}{{ win['title'] }} — Daybook{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>{{ win['title'] }}</h2>
+    <div class="card-meta">{{ win['win_date'] }}</div>
+  </div>
+  <div>
+    <a class="btn btn-secondary" href="{{ url_for('wins.edit_view', win_id=win['id']) }}">Edit</a>
+    <form method="post" action="{{ url_for('wins.delete_view', win_id=win['id']) }}" style="display:inline"
+          onsubmit="return confirm('Delete this win?')">
+      <button class="btn btn-danger" type="submit">Delete</button>
+    </form>
+  </div>
+</div>
+
+{% if people %}
+<div style="margin-bottom: 16px;">
+  {% for p in people %}{{ person_pill(p) }}{% endfor %}
+</div>
+{% endif %}
+
+{% if win['what_i_did'] %}<h3>What I did</h3><p>{{ win['what_i_did'] }}</p>{% endif %}
+{% if win['impact_result'] %}<h3>Impact / result</h3><p>{{ win['impact_result'] }}</p>{% endif %}
+
+{% if win['source_task_id'] %}
+<p class="flash-hint"><a href="{{ url_for('tasks.edit_view', task_id=win['source_task_id']) }}">View source task</a></p>
+{% endif %}
+
+<h3>Skills</h3>
+{% include "skills/_tagger.html" %}
+{% endblock %}

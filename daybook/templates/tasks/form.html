@@ -46,8 +46,14 @@
   <div style="margin-top: 24px;">
     <button class="btn" type="submit">Save</button>
     <a class="btn btn-secondary" href="{{ url_for('tasks.today_view') }}">Cancel</a>
+    {% if task['status'] == 'done' %}
+      <a class="btn btn-secondary" href="{{ url_for('wins.new_view', task_id=task['id']) }}">Mark as win</a>
+    {% endif %}
   </div>
 </form>
+
+<h3>Skills</h3>
+{% include "skills/_tagger.html" %}
 
 <form method="post" action="{{ url_for('tasks.delete_view', task_id=task['id']) }}"
       onsubmit="return confirm('Delete this task?')" style="margin-top: 12px;">

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Weekly review {{ week_str }} — Daybook{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Week {{ week_str }}</h2>
+  <div>
+    <a class="btn btn-secondary" href="{{ url_for('weekly_review.detail_view', week_str=prev_week) }}">&larr; Previous</a>
+    <a class="btn btn-secondary" href="{{ url_for('weekly_review.detail_view', week_str=next_week) }}">Next &rarr;</a>
+    <a class="btn btn-secondary" href="{{ url_for('weekly_review.export_view', week_str=week_str) }}">Export Markdown</a>
+  </div>
+</div>
+<p class="card-meta">{{ summary.week_start }} to {{ summary.week_end }}</p>
+
+<div class="card-grid">
+  <div class="card">
+    <strong>Notes by type</strong>
+    {% if summary.notes_by_type %}
+      <ul>{% for row in summary.notes_by_type %}<li>{{ row['type_name'] }}: {{ row['count'] }}</li>{% endfor %}</ul>
+    {% else %}<p class="card-meta">None this week.</p>{% endif %}
+  </div>
+
+  <div class="card">
+    <strong>Tasks completed</strong>
+    {% if summary.tasks_completed %}
+      <ul>{% for t in summary.tasks_completed %}<li>{{ t['title'] }}</li>{% endfor %}</ul>
+    {% else %}<p class="card-meta">None this week.</p>{% endif %}
+  </div>
+
+  <div class="card">
+    <strong>Open or overdue tasks</strong>
+    {% if summary.tasks_open_or_overdue %}
+      <ul>{% for t in summary.tasks_open_or_overdue %}<li>{{ t['title'] }} ({{ t['status'] }})</li>{% endfor %}</ul>
+    {% else %}<p class="card-meta">Nothing outstanding.</p>{% endif %}
+  </div>
+
+  <div class="card">
+    <strong>Skills touched</strong>
+    {% if summary.skills_touched %}
+      <ul>{% for s in summary.skills_touched %}<li>{{ s['name'] }}</li>{% endfor %}</ul>
+    {% else %}<p class="card-meta">None this week.</p>{% endif %}
+  </div>
+
+  <div class="card">
+    <strong>Wins</strong>
+    {% if summary.wins %}
+      <ul>{% for w in summary.wins %}<li>{{ w['title'] }}</li>{% endfor %}</ul>
+    {% else %}<p class="card-meta">None this week.</p>{% endif %}
+  </div>
+</div>
+
+<h3>Reflection</h3>
+<form method="post" action="{{ url_for('weekly_review.save_view', week_str=week_str) }}">
+  <label for="went_well">What went well</label>
+  <textarea id="went_well" name="went_well" style="min-height:100px;">{{ review['went_well'] if review else '' }}</textarea>
+
+  <label for="to_improve">What to improve</label>
+  <textarea id="to_improve" name="to_improve" style="min-height:100px;">{{ review['to_improve'] if review else '' }}</textarea>
+
+  <label for="focus_next_week">Focus for next week</label>
+  <textarea id="focus_next_week" name="focus_next_week" style="min-height:100px;">{{ review['focus_next_week'] if review else '' }}</textarea>
+
+  <div style="margin-top: 24px;">
+    <button class="btn" type="submit">Save</button>
+  </div>
+</form>
+{% endblock %}

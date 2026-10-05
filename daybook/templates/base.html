@@ -4,8 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Daybook{% endblock %}</title>
+  <script>
+    // Applied before the stylesheet renders, so there's no light-mode flash
+    // for users who've chosen dark mode (see static/app.js: toggleDarkMode).
+    if (localStorage.getItem("daybook-theme") === "dark") {
+      document.documentElement.dataset.theme = "dark";
+    }
+  </script>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script src="{{ url_for('static', filename='vendor/htmx.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -24,10 +32,11 @@
         <a href="{{ url_for('weekly_review.current_view') }}" class="{{ 'active' if request.blueprint == 'weekly_review' }}">Weekly Review</a>
         <a href="{{ url_for('settings.note_types_view') }}" class="{{ 'active' if request.blueprint == 'settings' }}">Settings</a>
       </nav>
+      <button type="button" class="btn btn-secondary" onclick="toggleDarkMode()" style="margin-top:16px; width:100%;">Toggle dark mode</button>
     </aside>
     <main class="main">
       <form class="search-form" action="{{ url_for('search.search_view') }}" method="get">
-        <input type="text" name="q" placeholder="Search notes…" value="{{ request.args.get('q', '') }}">
+        <input type="text" id="global-search" name="q" placeholder="Search notes… (/)" value="{{ request.args.get('q', '') }}">
       </form>
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}

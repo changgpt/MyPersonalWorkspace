@@ -39,6 +39,7 @@ daybook/
   task_extraction.py    # extract_action_items(markdown) -> ["line text", ...]
   tag_utils.py           # shared comma-separated-tag-field parsing (notes + wins)
   ai.py                  # Phase 4: optional Anthropic API features, off by default
+  static/app.js           # Phase 5: keyboard shortcuts (n/t//) + dark mode toggle
   blueprints/           # one file per feature area (notes, people, projects,
                         # tasks, topics, search, settings, dashboard, skills,
                         # wins, activity, weekly_review)
@@ -141,6 +142,29 @@ data/                    # git-ignored; daybook.db lives here
   - `ai.AIError` is the one exception type blueprints need to catch; it
     wraps both "features are off" and any underlying `anthropic.APIError`,
     and is shown to the user via `flash()`.
+- **Export (`GET /settings/export`)** builds a zip in memory
+  (`io.BytesIO` + `zipfile`, no temp files) from `db.export_all_data()` —
+  one `data.json` plus one Markdown file per note. Notes/wins in the
+  export have their tag names resolved inline (not just join-table ids),
+  since that's what's actually useful outside the app.
+- **Backup is a CLI command** (`flask backup-db`), not a web route — it
+  just copies the sqlite file to `data/backups/`. Deliberately separate
+  from the "export everything" feature: one is a full structured export,
+  the other is a raw file copy for disaster recovery.
+- **Dark mode is pure CSS + localStorage**, no server-side setting: a
+  `:root[data-theme="dark"]` block in `style.css` overrides the same
+  custom properties the light theme defines, toggled by
+  `toggleDarkMode()` in `static/app.js` and applied before first paint by
+  an inline script in `base.html`'s `<head>` (reads `localStorage`, sets
+  `document.documentElement.dataset.theme` before the stylesheet renders,
+  so there's no flash). Any new color in a template or CSS rule should go
+  through an existing custom property, or add one to *both* the light and
+  dark blocks — a hard-coded hex value will look wrong in one theme.
+- **Keyboard shortcuts** (`static/app.js`): `n` new note, `t` Tasks
+  (Today view, whose quick-add input has `autofocus`), `/` focuses
+  `#global-search`. Guarded against firing while typing in a field or with
+  a modifier key held — don't add a new single-key shortcut without the
+  same guard.
 
 ## Running and testing
 
@@ -152,6 +176,8 @@ flask init-db        # idempotent: creates tables + seeds note types if empty
 python run.py         # http://127.0.0.1:5000
 
 python -m pytest tests/ -v
+
+flask backup-db       # copies data/daybook.db to data/backups/daybook-<timestamp>.db
 ```
 
 Tests use a temporary SQLite file per test (see `tests/conftest.py`), never
@@ -191,8 +217,9 @@ and/or its source note. The People page still only shows notes.
   default (`ANTHROPIC_API_KEY` in `.env` + Settings toggle) — summarize a
   note, suggest action items from a note (approved before creating tasks),
   draft a weekly review's reflection fields from that week's summary.
-- **Phase 5 (not started):** export/backup, keyboard shortcuts, dark mode,
-  responsive layout.
+- **Phase 5 (done):** export everything as a zip (JSON + per-note
+  Markdown), `flask backup-db` CLI command, keyboard shortcuts (n/t//),
+  dark mode (CSS custom properties + localStorage), responsive layout
+  (stacked sidebar, single/double-column grids below 760px).
 
-When starting the next phase, update this file's "Phase status" section and
-the data model section above.
+All five phases from the original spec are complete.

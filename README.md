@@ -38,6 +38,15 @@ on your network.
 python -m pytest tests/ -v
 ```
 
+## Back up your data
+
+```bash
+flask backup-db           # copies data/daybook.db to data/backups/daybook-<timestamp>.db
+```
+
+Or use Settings → Export to download a zip with a full JSON export plus a
+Markdown file per note.
+
 ## What's here
 
 **Phase 1 — notes:**
@@ -89,8 +98,17 @@ python -m pytest tests/ -v
 - **Draft with AI** on a weekly review — fills in the reflection fields
   from that week's summary, which you can then edit before saving.
 
-Phase 5 (export/backup, keyboard shortcuts, dark mode, responsive layout)
-is still to come.
+**Phase 5 — polish:**
+- **Export everything** — Settings → Export downloads a zip with a JSON
+  export of all your data plus a Markdown file per note.
+- **Backup** — `flask backup-db` copies the SQLite file to `data/backups/`.
+- **Keyboard shortcuts** — `n` new note, `t` go to Tasks, `/` focus search
+  (ignored while you're typing in a field).
+- **Dark mode** — toggle in the sidebar, remembered across visits.
+- **Responsive layout** — usable in a narrow window; the sidebar moves
+  above the content and grids drop to fewer columns.
+
+That's every phase from the original plan.
 
 ## Project layout
 

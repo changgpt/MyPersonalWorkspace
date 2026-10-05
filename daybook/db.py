@@ -4,6 +4,7 @@ No ORM: every query here is plain SQL. For a single-user local app this
 keeps it obvious what each page actually asks the database for, and makes
 the FTS5 search queries (which ORMs handle awkwardly) straightforward.
 """
+import shutil
 import sqlite3
 from datetime import date, datetime, timedelta, timezone
 
@@ -57,6 +58,7 @@ def now_iso():
 def init_app(app):
     app.teardown_appcontext(close_db)
     app.cli.add_command(init_db_command)
+    app.cli.add_command(backup_db_command)
 
 
 @click.command("init-db")
@@ -67,6 +69,18 @@ def init_db_command():
     init_db()
     seed.seed_note_types(get_db())
     click.echo("Database initialised.")
+
+
+@click.command("backup-db")
+def backup_db_command():
+    """Copy the SQLite file to data/backups/daybook-<timestamp>.db."""
+    db_path = current_app.config["DATABASE_PATH"]
+    backups_dir = db_path.parent / "backups"
+    backups_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    backup_path = backups_dir / f"daybook-{timestamp}.db"
+    shutil.copy2(db_path, backup_path)
+    click.echo(f"Backed up to {backup_path}")
 
 
 # --- Note types --------------------------------------------------------
@@ -920,3 +934,48 @@ def save_note_ai_summary(note_id, summary):
     db = get_db()
     db.execute("UPDATE note SET ai_summary = ? WHERE id = ?", (summary, note_id))
     db.commit()
+
+
+# --- Export (Phase 5) ---------------------------------------------------
+
+def export_all_data():
+    """Everything in the database as plain dicts/lists, ready for
+    json.dumps. Notes and wins get their tag names resolved inline (not
+    just join-table ids) since that's far more useful in an export."""
+    db = get_db()
+
+    def all_rows(table):
+        return [dict(row) for row in db.execute(f"SELECT * FROM {table}").fetchall()]
+
+    notes = []
+    note_query = """SELECT note.*, note_type.name AS type_name FROM note
+                     JOIN note_type ON note_type.id = note.note_type_id
+                     ORDER BY note.id"""
+    for row in db.execute(note_query).fetchall():
+        note = dict(row)
+        tags = get_note_tags(note["id"])
+        note["people"] = [p["name"] for p in tags["people"]]
+        note["projects"] = [p["name"] for p in tags["projects"]]
+        note["topics"] = [t["name"] for t in tags["topics"]]
+        notes.append(note)
+
+    wins = []
+    for row in db.execute("SELECT * FROM win ORDER BY id").fetchall():
+        win = dict(row)
+        win["people"] = [p["name"] for p in people_for_win(win["id"])]
+        wins.append(win)
+
+    return {
+        "note_types": all_rows("note_type"),
+        "people": all_rows("person"),
+        "projects": all_rows("project"),
+        "topics": all_rows("topic"),
+        "notes": notes,
+        "tasks": all_rows("task"),
+        "skills": all_rows("skill"),
+        "skill_level_history": all_rows("skill_level_history"),
+        "skill_evidence": all_rows("skill_evidence"),
+        "log_entries": all_rows("log_entry"),
+        "wins": wins,
+        "weekly_reviews": all_rows("weekly_review"),
+    }

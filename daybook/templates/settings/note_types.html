@@ -5,6 +5,12 @@
   <h2>Settings</h2>
 </div>
 
+<h3>Export</h3>
+<div class="card">
+  <a class="btn btn-secondary" href="{{ url_for('settings.export_view') }}">Export everything (.zip)</a>
+  <p class="flash-hint">A JSON file with all your data, plus a Markdown file per note. To back up just the database file, run <code>flask backup-db</code> from the project folder.</p>
+</div>
+
 <h3>AI features</h3>
 {% if ai_api_key_configured %}
   <form method="post" action="{{ url_for('settings.ai_toggle_view') }}" class="card">

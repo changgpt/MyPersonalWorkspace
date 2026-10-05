@@ -1,4 +1,10 @@
-from flask import Blueprint, abort, redirect, render_template, request, url_for
+import io
+import json
+import re
+import zipfile
+from datetime import date
+
+from flask import Blueprint, abort, redirect, render_template, request, send_file, url_for
 
 from .. import ai, db
 
@@ -72,3 +78,41 @@ def note_type_activate_view(note_type_id):
         abort(404)
     db.set_note_type_active(note_type_id, is_active=True)
     return redirect(url_for("settings.note_types_view"))
+
+
+def _slugify(text):
+    slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+    return slug or "note"
+
+
+def _note_to_markdown(note):
+    lines = [
+        f"# {note['title']}",
+        "",
+        f"- Type: {note['type_name']}",
+        f"- Date: {note['event_date']}",
+        f"- People: {', '.join(note['people']) or '—'}",
+        f"- Projects: {', '.join(note['projects']) or '—'}",
+        f"- Topics: {', '.join(note['topics']) or '—'}",
+        "",
+        "---",
+        "",
+        note["body_markdown"],
+    ]
+    return "\n".join(lines)
+
+
+@bp.route("/export")
+def export_view():
+    data = db.export_all_data()
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("data.json", json.dumps(data, indent=2))
+        for note in data["notes"]:
+            filename = f"notes/{note['event_date']}-{_slugify(note['title'])}-{note['id']}.md"
+            zf.writestr(filename, _note_to_markdown(note))
+    buffer.seek(0)
+
+    filename = f"daybook-export-{date.today().isoformat()}.zip"
+    return send_file(buffer, mimetype="application/zip", as_attachment=True, download_name=filename)

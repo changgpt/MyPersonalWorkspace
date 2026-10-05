@@ -7,7 +7,7 @@
 </div>
 
 <form class="filter-bar" method="post" action="{{ url_for('tasks.quick_add_view') }}">
-  <input type="text" name="title" placeholder="Quick-add a task for today…" required style="width: 320px;">
+  <input type="text" name="title" placeholder="Quick-add a task for today…" required style="width: 320px;" autofocus>
   <button class="btn" type="submit">Add</button>
 </form>
 

@@ -16,6 +16,15 @@
   </select>
 
   <label for="template_markdown">Markdown template</label>
+  <div class="md-toolbar" data-target="template_markdown">
+    <button type="button" data-md-action="bold" title="Bold"><strong>B</strong></button>
+    <button type="button" data-md-action="italic" title="Italic"><em>I</em></button>
+    <button type="button" data-md-action="heading" title="Heading">H</button>
+    <button type="button" data-md-action="bullet" title="Bullet list">• List</button>
+    <button type="button" data-md-action="numbered" title="Numbered list">1. List</button>
+    <button type="button" data-md-action="checkbox" title="Checklist item">☑ Check</button>
+    <button type="button" data-md-action="link" title="Link">Link</button>
+  </div>
   <textarea id="template_markdown" name="template_markdown">{{ note_type['template_markdown'] if note_type else '' }}</textarea>
 
   <div style="margin-top: 24px;">

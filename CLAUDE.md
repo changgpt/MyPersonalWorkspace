@@ -40,6 +40,7 @@ daybook/
   tag_utils.py           # shared comma-separated-tag-field parsing (notes + wins)
   ai.py                  # Phase 4: optional Anthropic API features, off by default
   static/app.js           # Phase 5: keyboard shortcuts (n/t//) + dark mode toggle
+  static/editor-toolbar.js # formatting toolbar for Markdown textareas (bold/italic/etc.)
   blueprints/           # one file per feature area (notes, people, projects,
                         # tasks, topics, search, settings, dashboard, skills,
                         # wins, activity, weekly_review)
@@ -165,6 +166,14 @@ data/                    # git-ignored; daybook.db lives here
   `#global-search`. Guarded against firing while typing in a field or with
   a modifier key held — don't add a new single-key shortcut without the
   same guard.
+- **Markdown formatting toolbar** (`static/editor-toolbar.js`): a `.md-toolbar`
+  div with `data-target="<textarea id>"` and buttons carrying
+  `data-md-action` (`bold`/`italic`/`heading`/`bullet`/`numbered`/
+  `checkbox`/`link`) wraps or line-prefixes the current selection. It's
+  generic — drop the same markup above any textarea that renders through
+  `| markdown` (currently the note body and note-type templates); don't
+  add it above a plain-text field like a task/win description, since those
+  aren't rendered as Markdown.
 
 ## Running and testing
 

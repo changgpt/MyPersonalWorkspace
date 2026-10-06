@@ -150,6 +150,18 @@ input[type="text"], input[type="date"], input[type="file"], select, textarea {
 }
 textarea { width: 100%; min-height: 320px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
+.md-toolbar { display: flex; gap: 4px; margin-top: 4px; }
+.md-toolbar button {
+  padding: 4px 10px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.md-toolbar button:hover { background: var(--surface-sunken); }
+
 label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 4px; margin-top: 16px; font-weight: 600; }
 
 .card {

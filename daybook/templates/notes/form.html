@@ -5,7 +5,7 @@
   <h2>{{ 'Edit note' if note else 'New note' }}</h2>
 </div>
 
-<form method="post" enctype="multipart/form-data"
+<form method="post" enctype="multipart/form-data" onsubmit="syncRichEditors(this)"
       action="{{ url_for('notes.update_view', note_id=note['id']) if note else url_for('notes.create_view') }}">
 
   <label for="title">Title</label>
@@ -16,7 +16,7 @@
       <label for="note_type_id">Type</label>
       <select id="note_type_id" name="note_type_id" required
               hx-get="{{ url_for('notes.template_partial') }}"
-              hx-trigger="change" hx-target="#body_markdown" hx-swap="innerHTML">
+              hx-trigger="change" hx-target="#body_editor" hx-swap="innerHTML">
         {% for nt in note_types %}
           <option value="{{ nt['id'] }}"
             {{ 'selected' if (note and note['note_type_id'] == nt['id']) or (note_type and note_type['id'] == nt['id']) }}>
@@ -35,8 +35,8 @@
     </div>
   </div>
 
-  <label for="body_markdown">Body (Markdown)</label>
-  <div class="md-toolbar" data-target="body_markdown">
+  <label for="body_editor">Body</label>
+  <div class="md-toolbar" data-target="body_editor">
     <button type="button" data-md-action="bold" title="Bold"><strong>B</strong></button>
     <button type="button" data-md-action="italic" title="Italic"><em>I</em></button>
     <button type="button" data-md-action="heading" title="Heading">H</button>
@@ -47,7 +47,8 @@
     <button type="button" data-md-action="outdent" title="Outdent (Shift+Tab)">&larr; Indent</button>
     <button type="button" data-md-action="indent" title="Indent (Tab)">Indent &rarr;</button>
   </div>
-  <textarea id="body_markdown" name="body_markdown">{{ note['body_markdown'] if note else (note_type['template_markdown'] if note_type else '') }}</textarea>
+  <div class="rich-editor" id="body_editor" contenteditable="true" data-placeholder="Start typing…">{{ (note['body_markdown'] if note else (note_type['template_markdown'] if note_type else '')) | markdown | safe }}</div>
+  <textarea id="body_markdown" name="body_markdown" data-source="body_editor" style="display:none" aria-hidden="true"></textarea>
 
   <label for="note_file">Or import from a file (.txt, .md, .docx — replaces the body above)</label>
   <input type="file" id="note_file" name="note_file" accept=".txt,.md,.docx">

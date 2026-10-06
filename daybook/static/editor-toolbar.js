@@ -1,7 +1,12 @@
-// A small formatting toolbar for Markdown textareas (note body, note type
-// templates). Each `.md-toolbar` points at a textarea via `data-target`
-// (its id); buttons inside it carry a `data-md-action` that this file
-// knows how to apply to the current selection.
+// A small formatting toolbar for plain Markdown-source textareas (the
+// note-type template editor in Settings). Each `.md-toolbar` points at a
+// textarea via `data-target` (its id); buttons inside it carry a
+// `data-md-action` that this file knows how to apply to the current
+// selection. The note body editor is a WYSIWYG contenteditable div
+// instead (see static/rich-editor.js) -- this file skips any toolbar
+// whose target isn't an actual <textarea>, so the two never collide.
+
+(function () {
 
 function wrapSelection(textarea, prefix, suffix, placeholder) {
   const start = textarea.selectionStart;
@@ -75,7 +80,7 @@ const ACTIONS = {
 document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".md-toolbar").forEach((toolbar) => {
     const textarea = document.getElementById(toolbar.dataset.target);
-    if (!textarea) return;
+    if (!textarea || textarea.tagName !== "TEXTAREA") return;
 
     toolbar.querySelectorAll("[data-md-action]").forEach((button) => {
       button.addEventListener("click", () => {
@@ -96,3 +101,5 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
+
+})();

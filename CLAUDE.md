@@ -21,6 +21,11 @@ Single user, runs on `127.0.0.1`, SQLite file in `data/` (git-ignored).
   development — never loaded from a CDN at runtime).
 - **python-markdown + pymdown-extensions** for Markdown rendering (task list
   checkboxes via `pymdownx.tasklist`).
+- **Turndown** (vendored, `static/vendor/turndown.js`) converts the note
+  body editor's HTML back to Markdown client-side on submit — see "The
+  note body editor is WYSIWYG" below. The server only ever stores/renders
+  plain Markdown; Turndown exists purely so typing feels like a normal
+  rich-text editor instead of raw Markdown source.
 - **python-docx** for `.docx` → Markdown conversion — a deliberately partial
   converter (headings, bold/italic, bullet/numbered lists, paragraphs only;
   no tables or images). See `daybook/docx_utils.py`.
@@ -40,14 +45,16 @@ daybook/
   tag_utils.py           # shared comma-separated-tag-field parsing (notes + wins)
   ai.py                  # Phase 4: optional Anthropic API features, off by default
   static/app.js           # Phase 5: keyboard shortcuts (n/t//) + dark mode toggle
-  static/editor-toolbar.js # formatting toolbar for Markdown textareas (bold/italic/etc.)
+  static/editor-toolbar.js # formatting toolbar for plain Markdown textareas
+                          # (note-type templates only -- see note body below)
+  static/rich-editor.js    # WYSIWYG note body editor (contenteditable + Turndown)
   blueprints/           # one file per feature area (notes, people, projects,
                         # tasks, topics, search, settings, dashboard, skills,
                         # wins, activity, weekly_review)
   templates/            # Jinja templates, mirroring the blueprints
   static/style.css       # warm-neutral design system (CSS custom properties)
   static/board.js        # vanilla JS drag-and-drop for the task board
-  static/vendor/         # vendored JS (htmx)
+  static/vendor/         # vendored JS (htmx, turndown)
 tests/                   # pytest; conftest.py gives `app`/`client`/`db` fixtures
 run.py                   # entry point: `python run.py`
 data/                    # git-ignored; daybook.db lives here
@@ -166,16 +173,54 @@ data/                    # git-ignored; daybook.db lives here
   `#global-search`. Guarded against firing while typing in a field or with
   a modifier key held — don't add a new single-key shortcut without the
   same guard.
-- **Markdown formatting toolbar** (`static/editor-toolbar.js`): a `.md-toolbar`
-  div with `data-target="<textarea id>"` and buttons carrying
-  `data-md-action` (`bold`/`italic`/`heading`/`bullet`/`numbered`/
-  `checkbox`/`link`/`indent`/`outdent`) wraps or line-prefixes the current
-  selection. It's generic — drop the same markup above any textarea that
-  renders through `| markdown` (currently the note body and note-type
-  templates); don't add it above a plain-text field like a task/win
-  description, since those aren't rendered as Markdown. The same file also
-  binds Tab/Shift+Tab on each wired textarea to indent/outdent (2 spaces)
-  instead of the browser's default focus-change behaviour.
+- **The note body editor is WYSIWYG, not a Markdown-source textarea.**
+  `templates/notes/form.html` renders a `contenteditable` div
+  (`#body_editor`, class `.rich-editor`) pre-filled with
+  `{{ body_markdown | markdown | safe }}` — so editing a note shows
+  already-formatted bold/italic/headings/lists, never raw `**`/`##`
+  syntax. A hidden `<textarea name="body_markdown" data-source="body_editor">`
+  is what actually submits: `static/rich-editor.js`'s `syncRichEditors(form)`
+  (wired via the form's `onsubmit`) converts the editor's current HTML to
+  Markdown with Turndown (vendored at `static/vendor/turndown.js`) right
+  before submit. **The server never sees HTML** — `body_markdown` in the
+  database is unchanged plain Markdown, so search, task extraction, the
+  note/win Markdown exports, and `.docx` import are all unaffected by this;
+  only the editing experience changed.
+  - Toolbar buttons (`.md-toolbar` + `data-md-action`, same markup as
+    before) now call `document.execCommand` (`bold`/`italic`/
+    `insertUnorderedList`/`insertOrderedList`/`formatBlock`/`indent`/
+    `outdent`/`createLink`) instead of manipulating textarea text.
+    Checklist items insert the *exact* HTML `pymdownx.tasklist` renders
+    server-side (`markdown_utils.py`) — matching it exactly is what lets
+    a checklist item round-trip to `- [ ] `/`- [x] ` either direction.
+  - **`normalizeNestedLists` in `rich-editor.js` is load-bearing, don't
+    remove it.** Chrome's `execCommand('indent')` nests a sub-list as a
+    *sibling* of the preceding `<li>` (invalid HTML: `<ul><li>A</li>
+    <ul>...</ul></ul>`), which Turndown doesn't recognize as nesting —
+    without this fix-up, every indented list item silently flattens back
+    to the top level on save.
+  - Tab/Shift+Tab inside the editor call `execCommand('indent'/'outdent')`
+    directly (meaningful mainly inside a list); this is unrelated to
+    `editor-toolbar.js`'s own Tab handling, which only applies to plain
+    textareas (see below).
+- **`editor-toolbar.js` is now only for plain Markdown-source textareas**
+  (currently just the note-type template editor in Settings) — a
+  `.md-toolbar` div with `data-target="<textarea id>"` and buttons
+  carrying `data-md-action` wraps or line-prefixes the current selection,
+  plus Tab/Shift+Tab to indent/outdent (2 literal spaces). It explicitly
+  skips any toolbar whose target isn't a real `<textarea>` (so it can't
+  collide with the note body's rich-editor), and `rich-editor.js`
+  symmetrically skips any target that isn't `isContentEditable` — the two
+  files coexist on every page via `base.html` but never touch the same
+  element. Both files are wrapped in an IIFE (`(function () {...})()`) to
+  avoid colliding on shared top-level names like `ACTIONS`; if you add
+  globally-callable glue (like `syncRichEditors`, called from an inline
+  `onsubmit=""`), attach it explicitly via `window.fnName = fnName`.
+- **Keyboard shortcuts** (`static/app.js`): `n` new note, `t` Tasks
+  (Today view, whose quick-add input has `autofocus`), `/` focuses
+  `#global-search`. Guarded against firing while typing in a field or with
+  a modifier key held — don't add a new single-key shortcut without the
+  same guard.
 
 ## Running and testing
 

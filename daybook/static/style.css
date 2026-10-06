@@ -162,6 +162,26 @@ textarea { width: 100%; min-height: 320px; font-family: ui-monospace, SFMono-Reg
 }
 .md-toolbar button:hover { background: var(--surface-sunken); }
 
+.rich-editor {
+  width: 100%;
+  min-height: 320px;
+  padding: 10px 12px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+.rich-editor:focus { outline: 2px solid var(--accent-soft); outline-offset: -1px; }
+.rich-editor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-faint);
+}
+.rich-editor :first-child { margin-top: 0; }
+.rich-editor :last-child { margin-bottom: 0; }
+.rich-editor ul.task-list { list-style: none; padding-left: 4px; }
+.rich-editor li.task-list-item { margin-bottom: 4px; }
+
 label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 4px; margin-top: 16px; font-weight: 600; }
 
 .card {

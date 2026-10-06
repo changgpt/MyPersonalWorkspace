@@ -57,6 +57,22 @@ def test_completing_task_ticks_the_checkbox_in_the_note(db):
     assert db_module.get_task(task["id"])["completed_at"] is not None
 
 
+def test_sync_and_checkbox_toggle_work_with_crlf_line_endings(db):
+    # The WYSIWYG note editor's HTML-to-Markdown conversion (Turndown)
+    # joins blocks with \r\n, not \n -- extraction and the checkbox-sync
+    # replace must not assume Unix line endings.
+    body = "## Actions\r\n\r\n- [ ] Follow up on budget\r\n\r\n- [ ] Call the vendor"
+    note_id = _make_note(body)
+    db_module.sync_tasks_from_note(note_id, body)
+
+    titles = {t["title"] for t in db_module.tasks_for_note(note_id)}
+    assert titles == {"Follow up on budget", "Call the vendor"}
+
+    task = next(t for t in db_module.tasks_for_note(note_id) if t["title"] == "Call the vendor")
+    db_module.set_task_status(task["id"], "done")
+    assert "- [x] Call the vendor" in db_module.get_note(note_id)["body_markdown"]
+
+
 def test_reopening_task_unticks_the_checkbox(db):
     body = "- [ ] Follow up\n"
     note_id = _make_note(body)

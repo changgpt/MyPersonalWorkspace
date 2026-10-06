@@ -44,6 +44,8 @@
     <button type="button" data-md-action="numbered" title="Numbered list">1. List</button>
     <button type="button" data-md-action="checkbox" title="Checklist item">☑ Check</button>
     <button type="button" data-md-action="link" title="Link">Link</button>
+    <button type="button" data-md-action="outdent" title="Outdent (Shift+Tab)">&larr; Indent</button>
+    <button type="button" data-md-action="indent" title="Indent (Tab)">Indent &rarr;</button>
   </div>
   <textarea id="body_markdown" name="body_markdown">{{ note['body_markdown'] if note else (note_type['template_markdown'] if note_type else '') }}</textarea>
 

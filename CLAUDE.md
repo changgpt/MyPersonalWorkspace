@@ -169,11 +169,13 @@ data/                    # git-ignored; daybook.db lives here
 - **Markdown formatting toolbar** (`static/editor-toolbar.js`): a `.md-toolbar`
   div with `data-target="<textarea id>"` and buttons carrying
   `data-md-action` (`bold`/`italic`/`heading`/`bullet`/`numbered`/
-  `checkbox`/`link`) wraps or line-prefixes the current selection. It's
-  generic — drop the same markup above any textarea that renders through
-  `| markdown` (currently the note body and note-type templates); don't
-  add it above a plain-text field like a task/win description, since those
-  aren't rendered as Markdown.
+  `checkbox`/`link`/`indent`/`outdent`) wraps or line-prefixes the current
+  selection. It's generic — drop the same markup above any textarea that
+  renders through `| markdown` (currently the note body and note-type
+  templates); don't add it above a plain-text field like a task/win
+  description, since those aren't rendered as Markdown. The same file also
+  binds Tab/Shift+Tab on each wired textarea to indent/outdent (2 spaces)
+  instead of the browser's default focus-change behaviour.
 
 ## Running and testing
 

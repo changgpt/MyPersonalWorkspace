@@ -162,10 +162,54 @@ textarea { width: 100%; min-height: 320px; font-family: ui-monospace, SFMono-Reg
 }
 .md-toolbar button:hover { background: var(--surface-sunken); }
 
+/* Shared prose rules: the editor and the rendered note show the same
+   HTML, so they should read the same -- comfortable line length and
+   spacing rather than cramped default browser typography. */
+.rich-editor, .note-body {
+  font-size: 15px;
+  line-height: 1.65;
+}
+.rich-editor p, .note-body p { margin: 0 0 0.9em; }
+.rich-editor ul, .rich-editor ol, .note-body ul, .note-body ol {
+  margin: 0 0 0.9em;
+  padding-left: 1.5em;
+}
+.rich-editor li, .note-body li { margin-bottom: 0.35em; }
+.rich-editor h1, .note-body h1 { font-size: 1.5em; margin: 0.8em 0 0.4em; }
+.rich-editor h2, .note-body h2 {
+  font-size: 1.2em;
+  margin: 0.8em 0 0.4em;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+.rich-editor h3, .note-body h3 { font-size: 1.05em; margin: 0.8em 0 0.3em; }
+/* Markdown merges a plain list and a checklist that follow each other with
+   only a blank line between them into one list block (common when jotting
+   plain notes then adding action items right after) -- so hiding the
+   marker on the whole <ul class="task-list"> would also hide it for any
+   plain items sharing that list. Target individual items instead: only
+   one actually containing a checkbox loses its bullet. */
+.rich-editor li:has(.task-list-control), .note-body li:has(.task-list-control) {
+  list-style: none;
+}
+.rich-editor li.task-list-item, .note-body li.task-list-item { margin-bottom: 6px; }
+/* Overrides the generic `label { display: block; ... }` rule below, which
+   is meant for form field labels ("Title", "Body") -- without this, a
+   checklist item's <label class="task-list-control"> (wrapping its
+   checkbox) inherits that block styling and the item text wraps onto its
+   own line instead of sitting next to the checkbox. */
+.rich-editor .task-list-control, .note-body .task-list-control {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 4px 0 0;
+  font-weight: normal;
+  color: inherit;
+}
+
 .rich-editor {
   width: 100%;
   min-height: 320px;
-  padding: 10px 12px;
+  padding: 12px 16px;
   margin-top: 4px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -179,8 +223,6 @@ textarea { width: 100%; min-height: 320px; font-family: ui-monospace, SFMono-Reg
 }
 .rich-editor :first-child { margin-top: 0; }
 .rich-editor :last-child { margin-bottom: 0; }
-.rich-editor ul.task-list { list-style: none; padding-left: 4px; }
-.rich-editor li.task-list-item { margin-bottom: 4px; }
 
 label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 4px; margin-top: 16px; font-weight: 600; }
 
@@ -253,13 +295,6 @@ label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom
 }
 
 .note-body { margin-top: 16px; }
-/* Browsers collapse repeated spaces by default; without this, indentation
-   typed in the editor (or added via Tab/the Indent button) is stored
-   correctly but visually disappears when the note is rendered. */
-.note-body p, .note-body li { white-space: pre-wrap; }
-.note-body h2 { font-size: 16px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
-.note-body ul.task-list { list-style: none; padding-left: 4px; }
-.note-body li.task-list-item { margin-bottom: 4px; }
 
 mark { background: var(--accent-soft); color: var(--accent-hover); padding: 0 2px; border-radius: 3px; }
 

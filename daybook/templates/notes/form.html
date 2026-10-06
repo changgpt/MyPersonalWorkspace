@@ -14,9 +14,7 @@
   <div class="form-row">
     <div>
       <label for="note_type_id">Type</label>
-      <select id="note_type_id" name="note_type_id" required
-              hx-get="{{ url_for('notes.template_partial') }}"
-              hx-trigger="change" hx-target="#body_editor" hx-swap="innerHTML">
+      <select id="note_type_id" name="note_type_id" required>
         {% for nt in note_types %}
           <option value="{{ nt['id'] }}"
             {{ 'selected' if (note and note['note_type_id'] == nt['id']) or (note_type and note_type['id'] == nt['id']) }}>
@@ -24,9 +22,6 @@
           </option>
         {% endfor %}
       </select>
-      {% if not note %}
-        <div class="flash-hint">Changing the type replaces the body below with that type's template.</div>
-      {% endif %}
     </div>
     <div>
       <label for="event_date">Date</label>

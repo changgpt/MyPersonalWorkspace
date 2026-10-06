@@ -9,6 +9,43 @@ def test_seeded_note_types(db):
     assert len(types) == 7
 
 
+def test_seeded_templates_have_no_headers(db):
+    # Section headers were dropped in favour of plain bold labels.
+    for note_type in db_module.list_note_types():
+        assert "##" not in note_type["template_markdown"]
+
+
+def test_migrate_default_templates_updates_unmodified_legacy_template(db):
+    from daybook import seed
+
+    legacy_text = seed._LEGACY_V1_TEMPLATES["Idea"]
+    db.execute("UPDATE note_type SET template_markdown = ? WHERE name = 'Idea'", (legacy_text,))
+    db.commit()
+
+    seed.migrate_default_templates(db)
+
+    updated = db_module.get_note_type(
+        db.execute("SELECT id FROM note_type WHERE name = 'Idea'").fetchone()["id"]
+    )
+    assert updated["template_markdown"] == seed.DEFAULT_NOTE_TYPES[-1]["template_markdown"]
+    assert "##" not in updated["template_markdown"]
+
+
+def test_migrate_default_templates_leaves_customized_template_alone(db):
+    from daybook import seed
+
+    custom_text = "My own custom template, thanks"
+    db.execute("UPDATE note_type SET template_markdown = ? WHERE name = 'Idea'", (custom_text,))
+    db.commit()
+
+    seed.migrate_default_templates(db)
+
+    updated = db_module.get_note_type(
+        db.execute("SELECT id FROM note_type WHERE name = 'Idea'").fetchone()["id"]
+    )
+    assert updated["template_markdown"] == custom_text
+
+
 def test_create_note_with_tags(db):
     note_type = db_module.list_note_types()[0]
     note_id = db_module.create_note(

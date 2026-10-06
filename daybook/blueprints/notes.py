@@ -4,7 +4,6 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, u
 
 from .. import ai, db
 from ..docx_utils import docx_bytes_to_markdown
-from ..markdown_utils import render_markdown
 from ..tag_utils import tag_names_as_text as _tag_names_as_text
 from ..tag_utils import tag_names_to_ids as _tag_names_to_ids
 
@@ -79,16 +78,6 @@ def create_view():
     return redirect(url_for("notes.detail_view", note_id=note_id))
 
 
-@bp.route("/template")
-def template_partial():
-    """Returns the type's template pre-rendered as HTML, since it's swapped
-    straight into the WYSIWYG editor (a contenteditable div), not a plain
-    textarea -- see static/rich-editor.js."""
-    note_type_id = request.args.get("note_type_id", type=int)
-    note_type = db.get_note_type(note_type_id) if note_type_id else None
-    if note_type is None:
-        return ""
-    return render_markdown(note_type["template_markdown"])
 
 
 @bp.route("/<int:note_id>")

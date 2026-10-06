@@ -68,6 +68,7 @@ def init_db_command():
 
     init_db()
     seed.seed_note_types(get_db())
+    seed.migrate_default_templates(get_db())
     click.echo("Database initialised.")
 
 

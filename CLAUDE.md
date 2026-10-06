@@ -193,12 +193,41 @@ data/                    # git-ignored; daybook.db lives here
     Checklist items insert the *exact* HTML `pymdownx.tasklist` renders
     server-side (`markdown_utils.py`) — matching it exactly is what lets
     a checklist item round-trip to `- [ ] `/`- [x] ` either direction.
-  - **`normalizeNestedLists` in `rich-editor.js` is load-bearing, don't
-    remove it.** Chrome's `execCommand('indent')` nests a sub-list as a
-    *sibling* of the preceding `<li>` (invalid HTML: `<ul><li>A</li>
-    <ul>...</ul></ul>`), which Turndown doesn't recognize as nesting —
-    without this fix-up, every indented list item silently flattens back
-    to the top level on save.
+  - **Three load-bearing DOM fix-ups in `rich-editor.js`, found by actually
+    exercising the editor in a browser (Chrome's execCommand is notoriously
+    inconsistent — don't trust it to produce valid HTML and don't remove
+    these without re-testing the exact scenarios in their comments):
+    - `normalizeNestedLists` — `execCommand('indent')` nests a sub-list as
+      a *sibling* of the preceding `<li>` (invalid: `<ul><li>A</li>
+      <ul>...</ul></ul>`), which Turndown doesn't read as nesting; without
+      this, an indented list item silently flattens back to the top level
+      on save. Run at submit time on a cloned copy (not live — the
+      invalid-but-equivalent form renders fine, so there's no visible bug
+      to fix live).
+    - `unwrapBlockChildrenFromParagraphs` — `execCommand('insertUnorderedList'
+      /'insertOrderedList')` sometimes nests the new `<ul>`/`<ol>` *inside*
+      the current `<p>` instead of replacing it (also invalid — a `<p>`
+      can't contain a `<ul>`). Unlike the above, this one *is* visible
+      live (it defeats the `:has()` bullet-hiding rule below, among other
+      things), so it runs after every toolbar action, after Tab/Shift+Tab,
+      and on every `input` event, not just at submit time.
+    - `insertChecklistItem`'s empty-block detection treats `<p>`/`<div>`
+      and `<li>` differently on purpose. Pressing Enter to exit a *nested*
+      list only backs out one level (to a new empty `<li>`, not a plain
+      paragraph) — replacing that `<li>` in place would nest a `<ul>`
+      directly inside another `<ul>`. For that case it walks up to the
+      outermost list and inserts after it instead. (A bug here previously
+      scrambled an entire note's checklist + list items into one garbled
+      task on save — if you touch this function, re-test a checklist
+      added right after a *nested* (Tab-indented) list item, not just a
+      flat one.)
+  - **Checklist bullet-hiding is per-`<li>`, not per-`<ul>`.** Markdown
+    merges a plain list and a checklist that follow each other with only a
+    blank line between into *one* list block (common: jot plain notes,
+    then add action items right after) — so `.rich-editor li:has(
+    .task-list-control)` hides the marker on individual checkbox items
+    only; a blanket rule on `ul.task-list` would also hide the bullet on
+    any plain items Markdown merged into the same list.
   - Tab/Shift+Tab inside the editor call `execCommand('indent'/'outdent')`
     directly (meaningful mainly inside a list); this is unrelated to
     `editor-toolbar.js`'s own Tab handling, which only applies to plain
@@ -221,6 +250,24 @@ data/                    # git-ignored; daybook.db lives here
   `#global-search`. Guarded against firing while typing in a field or with
   a modifier key held — don't add a new single-key shortcut without the
   same guard.
+- **The note type `<select>` no longer touches the body.** It used to
+  `hx-get` the type's template into the editor on every `change` — which
+  meant picking a different type after you'd already started writing wiped
+  it out. That endpoint (`GET /notes/template`) and wiring are gone;
+  switching types now only affects metadata (color, settings link). The
+  body is still prefilled once, server-side, for a genuinely new note —
+  `{{ (note['body_markdown'] if note else (note_type['template_markdown']
+  if note_type else '')) | markdown | safe }}` — via the dormant
+  `?type=<id>` query param on `GET /notes/new` (not currently linked from
+  any page, but harmless to leave in place).
+- **Default note type templates have no `##` headers** (`seed.py`) — just
+  bold labels (`**Attendees**`), since a heading felt heavier than the
+  template needs. `seed.migrate_default_templates()`, called from `flask
+  init-db`, updates any *unmodified* legacy (header-style) template to the
+  new text — matched by exact string equality against a frozen snapshot
+  (`_LEGACY_V1_TEMPLATES`), so a template you've hand-edited is never
+  touched. Never add to `_LEGACY_V1_TEMPLATES` after the fact; it's a
+  historical snapshot, not a place to track the "current previous" version.
 
 ## Running and testing
 

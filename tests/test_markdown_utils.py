@@ -21,3 +21,14 @@ def test_renders_task_list_checkbox():
 def test_empty_body_renders_without_error():
     assert render_markdown("") == ""
     assert render_markdown(None) == ""
+
+
+def test_single_line_breaks_are_preserved():
+    html = render_markdown("Line one\nLine two\nLine three")
+    assert html.count("<br") == 2
+
+
+def test_blank_line_still_starts_a_new_paragraph():
+    html = render_markdown("Paragraph one\n\nParagraph two")
+    assert html.count("<p>") == 2
+    assert "<br" not in html

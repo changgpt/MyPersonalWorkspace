@@ -233,6 +233,10 @@ label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom
 }
 
 .note-body { margin-top: 16px; }
+/* Browsers collapse repeated spaces by default; without this, indentation
+   typed in the editor (or added via Tab/the Indent button) is stored
+   correctly but visually disappears when the note is rendered. */
+.note-body p, .note-body li { white-space: pre-wrap; }
 .note-body h2 { font-size: 16px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
 .note-body ul.task-list { list-style: none; padding-left: 4px; }
 .note-body li.task-list-item { margin-bottom: 4px; }

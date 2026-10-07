@@ -2,14 +2,15 @@
 {% from "_macros.html" import note_card %}
 {% block title %}Dashboard — Daybook{% endblock %}
 {% block content %}
+<div class="greeting-banner">
+  <h2 class="greeting-text">{{ greeting }}</h2>
+  <p class="greeting-quote">“{{ quote.text }}” <span class="greeting-author">— {{ quote.author }}</span></p>
+</div>
+
 <div class="page-header">
   <h2>Dashboard</h2>
   <a class="btn" href="{{ url_for('notes.new_view') }}">+ New note</a>
 </div>
-
-<p class="flash-hint">
-  The activity log, skills tracker, wins log and weekly review land in later phases.
-</p>
 
 <h3>Today's tasks</h3>
 {% if today_tasks %}

@@ -15,3 +15,7 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-opus-5-5")
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-only-secret-local-single-user")
+
+# Shown on the Dashboard's "Good morning, <name>" greeting. Empty by default
+# so a brand-new install doesn't greet you by someone else's name.
+DISPLAY_NAME = os.environ.get("DISPLAY_NAME", "")

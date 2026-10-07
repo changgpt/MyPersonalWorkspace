@@ -248,6 +248,21 @@ data/                    # git-ignored; daybook.db lives here
   so there's no flash). Any new color in a template or CSS rule should go
   through an existing custom property, or add one to *both* the light and
   dark blocks — a hard-coded hex value will look wrong in one theme.
+- **The Dashboard's greeting banner** (`daybook/greetings.py`) is pure
+  presentation, computed fresh on every request from `datetime.now()` (this
+  is a 127.0.0.1-only app, so server time is the user's own time) — nothing
+  is stored. `greeting_for_hour(hour)` buckets into morning (5-11) /
+  afternoon (12-16) / evening (17-20) / `_LATE_NIGHT` (everything else) and
+  pairs each with an emoji; `greeting_message` appends `config.DISPLAY_NAME`
+  (from `.env`, blank by default so a fresh install doesn't greet you by
+  someone else's name) only when it's set, so there's no dangling comma
+  with no name. `random_quote()` picks one of a hardcoded `QUOTES` list
+  (public-domain/widely-attributed figures, no copyrighted song lyrics or
+  recent authors) on every load — intentionally random per visit rather
+  than pinned per day, since "throw a quote at me" reads better as a
+  surprise than a repeat. Keep this module free of any DB or network call;
+  it's a presentation helper like `markdown_utils.py`, not a Phase 4
+  AI feature.
 - **Keyboard shortcuts** (`static/app.js`): `n` new note, `t` Tasks
   (Today view, whose quick-add input has `autofocus`), `/` focuses
   `#global-search`. Guarded against firing while typing in a field or with

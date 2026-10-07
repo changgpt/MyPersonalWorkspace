@@ -285,6 +285,32 @@ label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom
   align-items: center;
 }
 
+.greeting-banner {
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 24px;
+}
+
+.greeting-text {
+  margin: 0 0 6px;
+  font-size: 22px;
+  color: var(--accent-hover);
+}
+
+.greeting-quote {
+  margin: 0;
+  font-size: 14px;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.greeting-author {
+  font-style: normal;
+  color: var(--text-faint);
+}
+
 .empty-state {
   color: var(--text-faint);
   padding: 32px;

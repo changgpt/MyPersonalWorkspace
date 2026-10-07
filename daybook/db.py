@@ -354,6 +354,12 @@ def search_notes(query_text):
 
 # --- Tasks -----------------------------------------------------------------
 
+# Priority isn't alphabetically sortable (high/low/medium would put "high"
+# before "low" before "medium") -- this maps each to a rank so ORDER BY can
+# sort high-to-low. Shared by every query that lists active tasks.
+_PRIORITY_RANK_SQL = "CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 WHEN 'low' THEN 2 ELSE 3 END"
+
+
 def create_task(title, description="", priority="medium", due_date=None,
                  is_today=False, project_id=None, source_note_id=None,
                  source_line_text=None):
@@ -454,8 +460,8 @@ def tasks_for_note(note_id):
 def tasks_for_project(project_id):
     db = get_db()
     return db.execute(
-        """SELECT * FROM task WHERE project_id = ?
-           ORDER BY (status = 'done'), due_date IS NULL, due_date, id""",
+        f"""SELECT * FROM task WHERE project_id = ?
+            ORDER BY (status = 'done'), {_PRIORITY_RANK_SQL}, due_date IS NULL, due_date, id""",
         (project_id,),
     ).fetchall()
 
@@ -473,7 +479,7 @@ def list_tasks(status=None, project_id=None, priority=None):
     if priority:
         query += " AND priority = ?"
         params.append(priority)
-    query += " ORDER BY (status = 'done'), due_date IS NULL, due_date, id"
+    query += f" ORDER BY (status = 'done'), {_PRIORITY_RANK_SQL}, due_date IS NULL, due_date, id"
     return db.execute(query, params).fetchall()
 
 
@@ -482,8 +488,8 @@ def list_today_flagged_tasks():
     separate from the overdue list there."""
     db = get_db()
     return db.execute(
-        """SELECT * FROM task WHERE is_today = 1 AND status != 'done'
-           ORDER BY due_date IS NULL, due_date, id"""
+        f"""SELECT * FROM task WHERE is_today = 1 AND status != 'done'
+            ORDER BY {_PRIORITY_RANK_SQL}, due_date IS NULL, due_date, id"""
     ).fetchall()
 
 
@@ -494,10 +500,10 @@ def list_today_view_tasks():
     db = get_db()
     today = date.today().isoformat()
     return db.execute(
-        """SELECT * FROM task
-           WHERE is_today = 1
-              OR (due_date IS NOT NULL AND due_date < ? AND status != 'done')
-           ORDER BY (status = 'done'), due_date IS NULL, due_date, id""",
+        f"""SELECT * FROM task
+            WHERE is_today = 1
+               OR (due_date IS NOT NULL AND due_date < ? AND status != 'done')
+            ORDER BY (status = 'done'), {_PRIORITY_RANK_SQL}, due_date IS NULL, due_date, id""",
         (today,),
     ).fetchall()
 
@@ -506,8 +512,8 @@ def list_overdue_tasks():
     db = get_db()
     today = date.today().isoformat()
     return db.execute(
-        """SELECT * FROM task WHERE due_date IS NOT NULL AND due_date < ?
-           AND status != 'done' ORDER BY due_date""",
+        f"""SELECT * FROM task WHERE due_date IS NOT NULL AND due_date < ?
+            AND status != 'done' ORDER BY {_PRIORITY_RANK_SQL}, due_date""",
         (today,),
     ).fetchall()
 
@@ -892,7 +898,8 @@ def weekly_review_summary(week_str):
     ).fetchall()
 
     tasks_open_or_overdue = db.execute(
-        "SELECT * FROM task WHERE status != 'done' ORDER BY due_date IS NULL, due_date"
+        f"SELECT * FROM task WHERE status != 'done' "
+        f"ORDER BY {_PRIORITY_RANK_SQL}, due_date IS NULL, due_date"
     ).fetchall()
 
     wins = db.execute(

@@ -27,7 +27,7 @@
       {% if item.entity_type == 'note' %}
         <a href="{{ url_for('notes.detail_view', note_id=item.entity_id) }}">{{ item.entity_title }}</a>
       {% elif item.entity_type == 'task' %}
-        <a href="{{ url_for('tasks.edit_view', task_id=item.entity_id) }}">{{ item.entity_title }}</a>
+        <a href="{{ url_for('tasks.edit_view', task_id=item.entity_id, next=request.full_path) }}">{{ item.entity_title }}</a>
       {% elif item.entity_type == 'win' %}
         <a href="{{ url_for('wins.detail_view', win_id=item.entity_id) }}">{{ item.entity_title }}</a>
       {% elif item.entity_type == 'log_entry' %}

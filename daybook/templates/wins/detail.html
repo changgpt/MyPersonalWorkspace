@@ -26,7 +26,7 @@
 {% if win['impact_result'] %}<h3>Impact / result</h3><p>{{ win['impact_result'] }}</p>{% endif %}
 
 {% if win['source_task_id'] %}
-<p class="flash-hint"><a href="{{ url_for('tasks.edit_view', task_id=win['source_task_id']) }}">View source task</a></p>
+<p class="flash-hint"><a href="{{ url_for('tasks.edit_view', task_id=win['source_task_id'], next=request.full_path) }}">View source task</a></p>
 {% endif %}
 
 <h3>Skills</h3>

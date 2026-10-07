@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from flask import Blueprint, abort, redirect, render_template, request, url_for
 
 from .. import db
@@ -6,6 +8,19 @@ bp = Blueprint("tasks", __name__, url_prefix="/tasks")
 
 STATUSES = ["todo", "in_progress", "blocked", "done"]
 PRIORITIES = ["low", "medium", "high"]
+
+
+def _safe_next(default):
+    """Where to go after this edit/delete. Reads `next` from either the
+    query string or the form body (request.values covers both) -- a task
+    can be edited from Today, Board, a note's or project's linked-tasks
+    list, or the dashboard, so (unlike other edit pages in this app) there
+    isn't one single sensible page to fall back to. Only accepts an
+    internal path (starts with "/"), never an absolute URL."""
+    next_url = request.values.get("next")
+    if next_url and next_url.startswith("/"):
+        return next_url
+    return default
 
 
 @bp.route("")
@@ -46,7 +61,15 @@ def toggle_view(task_id):
     new_status = "todo" if task["status"] == "done" else "done"
     db.set_task_status(task_id, new_status)
     task = db.get_task(task_id)
-    return render_template("tasks/_task_row.html", task=task)
+    # This re-renders the row standalone for htmx's swap, so request.full_path
+    # would otherwise resolve to this AJAX endpoint itself, not the page the
+    # checklist is actually on -- read the real page from the header htmx
+    # sends with every request instead.
+    current_url = request.headers.get("HX-Current-URL", "")
+    parsed = urlparse(current_url)
+    next_url = parsed.path + (f"?{parsed.query}" if parsed.query else "")
+    next_url = next_url or url_for("tasks.today_view")
+    return render_template("tasks/_task_row.html", task=task, next_url=next_url)
 
 
 @bp.route("/<int:task_id>/status", methods=["POST"])
@@ -71,6 +94,7 @@ def edit_view(task_id):
         evidence=db.evidence_for_entity("task", task_id),
         all_skills=db.list_skills(),
         entity_type="task", entity_id=task_id,
+        next=_safe_next(url_for("tasks.today_view")),
     )
 
 
@@ -88,7 +112,7 @@ def update_view(task_id):
         is_today=bool(form.get("is_today")),
         project_id=form.get("project_id", type=int) or None,
     )
-    return redirect(request.referrer or url_for("tasks.today_view"))
+    return redirect(_safe_next(url_for("tasks.today_view")))
 
 
 @bp.route("/<int:task_id>/delete", methods=["POST"])
@@ -96,4 +120,4 @@ def delete_view(task_id):
     if db.get_task(task_id) is None:
         abort(404)
     db.delete_task(task_id)
-    return redirect(request.referrer or url_for("tasks.today_view"))
+    return redirect(_safe_next(url_for("tasks.today_view")))

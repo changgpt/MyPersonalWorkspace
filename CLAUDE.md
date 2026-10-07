@@ -98,6 +98,29 @@ data/                    # git-ignored; daybook.db lives here
   (`db.set_task_status` → `db._sync_note_checkbox`), but hand-editing a
   checkbox in the note body does not flip the task back. If you need to
   change this, start from `test_tasks.py`, which pins the current behaviour.
+- **Task lists are ordered priority-then-date** (`db._PRIORITY_RANK_SQL`,
+  a `CASE priority WHEN 'high' THEN 0 ...` expression — priority isn't
+  alphabetically sortable). Shared by every query that lists *active*
+  tasks (`list_tasks`, `list_today_view_tasks`, `list_today_flagged_tasks`,
+  `list_overdue_tasks`, `tasks_for_project`, the weekly review's open/
+  overdue list). Deliberately **not** applied to `tasks_for_note` (keeps
+  the order they appear in the note) or `list_tasks_completed_this_week`
+  (chronological completion order reads better there).
+- **A task's edit/delete redirect target is explicit (`next`), not
+  `request.referrer`.** A task can be edited from Today, Board, a note's
+  or project's linked-tasks list, or the dashboard — unlike every other
+  "edit X" page in this app, there's no single page to fall back to, and
+  `request.referrer` pointed at the edit page itself (so Save looked like
+  it did nothing, and Delete sent you to a 404 for the task you'd just
+  deleted). Every link to `tasks.edit_view` passes `next=request.full_path`
+  (or, for the Today checklist's htmx-swapped row, the page read from the
+  `HX-Current-URL` header `toggle_view` receives — `request.full_path`
+  there would resolve to the AJAX endpoint itself, not the page the user is
+  on). `tasks._safe_next()` reads it back from `request.values` (query
+  string or form body) on save/delete, falling back to Today, and only
+  honors an internal path (starts with `/`). Adding a new place that links
+  to `tasks.edit_view` needs the same `next=...`, or Save/Delete there will
+  silently fall back to Today instead of returning you to it.
 - **Board drag-and-drop** is plain HTML5 drag/drop (`static/board.js`), no
   library. It moves the card optimistically and POSTs the new status;
   on failure it just alerts and relies on a refresh to show the true state

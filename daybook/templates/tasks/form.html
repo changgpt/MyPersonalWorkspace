@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-header"><h2>Edit task</h2></div>
 
-<form method="post" action="{{ url_for('tasks.update_view', task_id=task['id']) }}">
+<form method="post" action="{{ url_for('tasks.update_view', task_id=task['id'], next=next) }}">
   <label for="title">Title</label>
   <input type="text" id="title" name="title" required value="{{ task['title'] }}">
 
@@ -45,7 +45,7 @@
 
   <div style="margin-top: 24px;">
     <button class="btn" type="submit">Save</button>
-    <a class="btn btn-secondary" href="{{ url_for('tasks.today_view') }}">Cancel</a>
+    <a class="btn btn-secondary" href="{{ next }}">Cancel</a>
     {% if task['status'] == 'done' %}
       <a class="btn btn-secondary" href="{{ url_for('wins.new_view', task_id=task['id']) }}">Mark as win</a>
     {% endif %}
@@ -55,7 +55,7 @@
 <h3>Skills</h3>
 {% include "skills/_tagger.html" %}
 
-<form method="post" action="{{ url_for('tasks.delete_view', task_id=task['id']) }}"
+<form method="post" action="{{ url_for('tasks.delete_view', task_id=task['id'], next=next) }}"
       onsubmit="return confirm('Delete this task?')" style="margin-top: 12px;">
   <button class="btn btn-danger" type="submit">Delete task</button>
 </form>

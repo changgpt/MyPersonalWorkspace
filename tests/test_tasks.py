@@ -137,3 +137,28 @@ def test_list_tasks_filters_by_project_and_priority(db):
 
     results = db_module.list_tasks(priority="low")
     assert [t["title"] for t in results] == ["Low prio, no project"]
+
+
+def test_list_tasks_orders_by_priority_then_date(db):
+    from datetime import date, timedelta
+    today = date.today()
+
+    db_module.create_task(title="Medium, no date", priority="medium")
+    db_module.create_task(title="High, later", priority="high",
+                           due_date=(today + timedelta(days=5)).isoformat())
+    db_module.create_task(title="High, sooner", priority="high",
+                           due_date=(today + timedelta(days=1)).isoformat())
+    db_module.create_task(title="Low, with date", priority="low",
+                           due_date=today.isoformat())
+
+    titles = [t["title"] for t in db_module.list_tasks()]
+    assert titles == ["High, sooner", "High, later", "Medium, no date", "Low, with date"]
+
+
+def test_today_view_orders_by_priority_then_date(db):
+    db_module.create_task(title="Low priority today", priority="low", is_today=True)
+    db_module.create_task(title="High priority today", priority="high", is_today=True)
+    db_module.create_task(title="Medium priority today", priority="medium", is_today=True)
+
+    titles = [t["title"] for t in db_module.list_today_view_tasks()]
+    assert titles == ["High priority today", "Medium priority today", "Low priority today"]

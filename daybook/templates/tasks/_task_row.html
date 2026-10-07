@@ -5,5 +5,5 @@
   <span class="task-title">{{ task['title'] }}</span>
   <span class="tag tag-{{ {'low': 'sage', 'medium': 'ochre', 'high': 'rose'}[task['priority']] }}">{{ task['priority'] }}</span>
   {% if task['due_date'] %}<span class="card-meta">due {{ task['due_date'] }}</span>{% endif %}
-  <a class="pill-link" href="{{ url_for('tasks.edit_view', task_id=task['id']) }}">Edit</a>
+  <a class="pill-link" href="{{ url_for('tasks.edit_view', task_id=task['id'], next=next_url if next_url is defined else request.full_path) }}">Edit</a>
 </li>

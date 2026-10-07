@@ -93,7 +93,8 @@ CREATE TABLE IF NOT EXISTS task (
     priority TEXT NOT NULL DEFAULT 'medium'
         CHECK (priority IN ('low', 'medium', 'high')),
     due_date TEXT,
-    is_today INTEGER NOT NULL DEFAULT 0,
+    bucket TEXT NOT NULL DEFAULT 'today'
+        CHECK (bucket IN ('today', 'long_term', 'background')),
     project_id INTEGER REFERENCES project(id),
     source_note_id INTEGER REFERENCES note(id) ON DELETE SET NULL,
     -- Text of the "- [ ] ..." / "TODO: ..." line this task was extracted

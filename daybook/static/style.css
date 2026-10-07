@@ -328,12 +328,21 @@ mark { background: var(--accent-soft); color: var(--accent-hover); padding: 0 2p
 .task-row .task-title { flex: 1; }
 .task-row.task-done .task-title { text-decoration: line-through; color: var(--text-faint); }
 
-.board {
+.board, .today-board {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   align-items: start;
 }
+
+.today-board { grid-template-columns: repeat(3, 1fr); }
+
+.today-board .task-checklist.board-column-list {
+  min-height: 60px;
+}
+
+.today-board .task-row { margin-bottom: 8px; cursor: grab; }
+.today-board .task-row.dragging { opacity: 0.4; }
 
 .board-column h3 {
   font-size: 13px;
@@ -383,7 +392,7 @@ footer.app-footer {
   .sidebar nav { flex-direction: row; flex-wrap: wrap; gap: 4px; }
   .sidebar nav a { padding: 6px 10px; }
   .main { padding: 16px 20px; max-width: 100%; }
-  .board { grid-template-columns: repeat(2, 1fr); }
+  .board, .today-board { grid-template-columns: repeat(2, 1fr); }
   .card-grid { grid-template-columns: 1fr; }
   .form-row { flex-direction: column; }
   .search-form input[type="text"] { width: 100%; }
@@ -391,5 +400,5 @@ footer.app-footer {
 }
 
 @media (max-width: 480px) {
-  .board { grid-template-columns: 1fr; }
+  .board, .today-board { grid-template-columns: 1fr; }
 }

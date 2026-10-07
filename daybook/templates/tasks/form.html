@@ -1,57 +1,61 @@
 {% extends "base.html" %}
-{% block title %}Edit task — Daybook{% endblock %}
+{% block title %}{{ 'Edit task' if task else 'New task' }} — Daybook{% endblock %}
 {% block content %}
-<div class="page-header"><h2>Edit task</h2></div>
+<div class="page-header"><h2>{{ 'Edit task' if task else 'New task' }}</h2></div>
 
-<form method="post" action="{{ url_for('tasks.update_view', task_id=task['id'], next=next) }}">
+<form method="post" action="{{ url_for('tasks.update_view', task_id=task['id'], next=next) if task else url_for('tasks.create_view', next=next) }}">
   <label for="title">Title</label>
-  <input type="text" id="title" name="title" required value="{{ task['title'] }}">
+  <input type="text" id="title" name="title" required value="{{ task['title'] if task else '' }}" {{ '' if task else 'autofocus' }}>
 
   <label for="description">Description</label>
-  <textarea id="description" name="description" style="min-height:120px;">{{ task['description'] }}</textarea>
+  <textarea id="description" name="description" style="min-height:120px;">{{ task['description'] if task else '' }}</textarea>
 
   <div class="form-row">
     <div>
       <label for="priority">Priority</label>
       <select id="priority" name="priority">
         {% for p in priorities %}
-          <option value="{{ p }}" {{ 'selected' if task['priority'] == p }}>{{ p }}</option>
+          <option value="{{ p }}" {{ 'selected' if task and task['priority'] == p }}>{{ p }}</option>
         {% endfor %}
       </select>
     </div>
     <div>
       <label for="due_date">Due date</label>
-      <input type="date" id="due_date" name="due_date" value="{{ task['due_date'] or '' }}">
+      <input type="date" id="due_date" name="due_date" value="{{ task['due_date'] if task else '' }}">
     </div>
     <div>
       <label for="project_id">Project</label>
       <select id="project_id" name="project_id">
         <option value="">None</option>
         {% for p in projects %}
-          <option value="{{ p['id'] }}" {{ 'selected' if task['project_id'] == p['id'] }}>{{ p['name'] }}</option>
+          <option value="{{ p['id'] }}" {{ 'selected' if task and task['project_id'] == p['id'] }}>{{ p['name'] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label for="bucket">Bucket</label>
+      <select id="bucket" name="bucket">
+        {% for b in buckets %}
+          <option value="{{ b }}" {{ 'selected' if (task['bucket'] if task else 'today') == b }}>{{ bucket_labels[b] }}</option>
         {% endfor %}
       </select>
     </div>
   </div>
 
-  <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:16px;">
-    <input type="checkbox" name="is_today" value="1" {{ 'checked' if task['is_today'] }} style="width:auto;">
-    Flag for today
-  </label>
-
-  {% if task['source_note_id'] %}
+  {% if task and task['source_note_id'] %}
   <p class="flash-hint">Created from a note: <a href="{{ url_for('notes.detail_view', note_id=task['source_note_id']) }}">view note</a></p>
   {% endif %}
 
   <div style="margin-top: 24px;">
     <button class="btn" type="submit">Save</button>
     <a class="btn btn-secondary" href="{{ next }}">Cancel</a>
-    {% if task['status'] == 'done' %}
+    {% if task and task['status'] == 'done' %}
       <a class="btn btn-secondary" href="{{ url_for('wins.new_view', task_id=task['id']) }}">Mark as win</a>
     {% endif %}
   </div>
 </form>
 
+{% if task %}
 <h3>Skills</h3>
 {% include "skills/_tagger.html" %}
 
@@ -59,4 +63,5 @@
       onsubmit="return confirm('Delete this task?')" style="margin-top: 12px;">
   <button class="btn btn-danger" type="submit">Delete task</button>
 </form>
+{% endif %}
 {% endblock %}

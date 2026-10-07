@@ -3,7 +3,10 @@
 {% block content %}
 <div class="page-header">
   <h2>Today</h2>
-  <a class="btn btn-secondary" href="{{ url_for('tasks.board_view') }}">Board view</a>
+  <div>
+    <a class="btn btn-secondary" href="{{ url_for('tasks.board_view') }}">Board view</a>
+    <a class="btn" href="{{ url_for('tasks.new_view', next=request.full_path) }}">+ Add task</a>
+  </div>
 </div>
 
 <form class="filter-bar" method="post" action="{{ url_for('tasks.quick_add_view') }}">
@@ -11,13 +14,24 @@
   <button class="btn" type="submit">Add</button>
 </form>
 
-{% if tasks %}
-<ul class="task-checklist">
-  {% for task in tasks %}
-    {% include "tasks/_task_row.html" %}
+<div class="today-board">
+  {% for bucket in buckets %}
+  <div class="board-column">
+    <h3>{{ bucket_labels[bucket] }}</h3>
+    <ul class="task-checklist board-column-list" data-drop-zone data-bucket="{{ bucket }}">
+      {% for task in tasks_by_bucket[bucket] %}
+        {% set next_url = request.full_path %}
+        {% set draggable = true %}
+        {% include "tasks/_task_row.html" %}
+      {% endfor %}
+    </ul>
+    {% if not tasks_by_bucket[bucket] %}
+    <div class="empty-state">Nothing here yet.</div>
+    {% endif %}
+  </div>
   {% endfor %}
-</ul>
-{% else %}
-<div class="empty-state">Nothing for today. Add something above, or flag an existing task as "today" from its edit page.</div>
-{% endif %}
+</div>
+
+<p class="flash-hint">Drag a task between checklists to re-prioritize it.</p>
+<script src="{{ url_for('static', filename='drag-drop.js') }}"></script>
 {% endblock %}

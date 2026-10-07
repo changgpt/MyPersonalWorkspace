@@ -1,4 +1,5 @@
-<li class="task-row {{ 'task-done' if task['status'] == 'done' }}" id="task-{{ task['id'] }}">
+<li class="task-row {{ 'task-done' if task['status'] == 'done' }}" id="task-{{ task['id'] }}"
+    {% if draggable is defined and draggable %}draggable="true" data-task-id="{{ task['id'] }}"{% endif %}>
   <input type="checkbox" {{ 'checked' if task['status'] == 'done' }}
          hx-post="{{ url_for('tasks.toggle_view', task_id=task['id']) }}"
          hx-trigger="change" hx-target="closest li" hx-swap="outerHTML">

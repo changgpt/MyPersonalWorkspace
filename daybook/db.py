@@ -38,6 +38,18 @@ def init_db():
     with open(schema_path, "r") as f:
         db.executescript(f.read())
     _add_column_if_missing(db, "note", "ai_summary", "TEXT")
+    bucket_added = _add_column_if_missing(
+        db, "task", "bucket",
+        "TEXT NOT NULL DEFAULT 'today' CHECK (bucket IN ('today', 'long_term', 'background'))",
+    )
+    if bucket_added:
+        # Pre-existing tasks have no bucket yet: carry over the old is_today
+        # flag (dropped in favor of the three-bucket model) so nothing that
+        # was flagged for today silently disappears from the Today view;
+        # anything else lands in "background" rather than "long_term" since
+        # it wasn't actively tracked either way.
+        db.execute("UPDATE task SET bucket = 'today' WHERE is_today = 1")
+        db.execute("UPDATE task SET bucket = 'background' WHERE is_today = 0")
     db.commit()
 
 
@@ -45,10 +57,13 @@ def _add_column_if_missing(db, table, column, column_type):
     """CREATE TABLE IF NOT EXISTS in schema.sql only helps brand-new
     databases -- it can't add a column to a table that already exists from
     an earlier phase. This covers that case so `flask init-db` stays
-    idempotent and safe to re-run after a schema change."""
+    idempotent and safe to re-run after a schema change. Returns True if the
+    column was actually added (so callers can run a one-time backfill)."""
     existing_columns = {row["name"] for row in db.execute(f"PRAGMA table_info({table})")}
     if column not in existing_columns:
         db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {column_type}")
+        return True
+    return False
 
 
 def now_iso():
@@ -361,28 +376,34 @@ _PRIORITY_RANK_SQL = "CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 WHEN
 
 
 def create_task(title, description="", priority="medium", due_date=None,
-                 is_today=False, project_id=None, source_note_id=None,
+                 bucket="today", project_id=None, source_note_id=None,
                  source_line_text=None):
     db = get_db()
     cur = db.execute(
-        """INSERT INTO task (title, description, priority, due_date, is_today,
+        """INSERT INTO task (title, description, priority, due_date, bucket,
                               project_id, source_note_id, source_line_text, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (title, description, priority, due_date, 1 if is_today else 0,
+        (title, description, priority, due_date, bucket,
          project_id, source_note_id, source_line_text, now_iso()),
     )
     db.commit()
     return cur.lastrowid
 
 
-def update_task(task_id, title, description, priority, due_date, is_today, project_id):
+def update_task(task_id, title, description, priority, due_date, bucket, project_id):
     db = get_db()
     db.execute(
         """UPDATE task SET title = ?, description = ?, priority = ?, due_date = ?,
-                            is_today = ?, project_id = ?
+                            bucket = ?, project_id = ?
            WHERE id = ?""",
-        (title, description, priority, due_date, 1 if is_today else 0, project_id, task_id),
+        (title, description, priority, due_date, bucket, project_id, task_id),
     )
+    db.commit()
+
+
+def set_task_bucket(task_id, bucket):
+    db = get_db()
+    db.execute("UPDATE task SET bucket = ? WHERE id = ?", (bucket, task_id))
     db.commit()
 
 
@@ -484,27 +505,36 @@ def list_tasks(status=None, project_id=None, priority=None):
 
 
 def list_today_flagged_tasks():
-    """Tasks flagged is_today, not yet done -- used on the Dashboard, kept
-    separate from the overdue list there."""
+    """Tasks in the "today" bucket, not yet done -- used on the Dashboard,
+    kept separate from the overdue list there."""
     db = get_db()
     return db.execute(
-        f"""SELECT * FROM task WHERE is_today = 1 AND status != 'done'
+        f"""SELECT * FROM task WHERE bucket = 'today' AND status != 'done'
             ORDER BY {_PRIORITY_RANK_SQL}, due_date IS NULL, due_date, id"""
     ).fetchall()
 
 
-def list_today_view_tasks():
-    """Tasks for the Today checklist: anything flagged is_today (even if
-    already done today, so you can see it ticked off), plus anything
-    overdue and not yet done."""
+def list_tasks_by_bucket(bucket):
+    """Tasks for one of the Today page's three checklists. The "today"
+    bucket also pulls in anything overdue regardless of its own bucket (so
+    nothing slips through unnoticed), even if already done today -- that's
+    the one case a task can show up away from its stored bucket. The other
+    two buckets show exactly what's filed there, no overdue pull-forward,
+    so a task doesn't appear in two checklists at once."""
     db = get_db()
     today = date.today().isoformat()
+    if bucket == "today":
+        return db.execute(
+            f"""SELECT * FROM task
+                WHERE bucket = 'today'
+                   OR (due_date IS NOT NULL AND due_date < ? AND status != 'done')
+                ORDER BY (status = 'done'), {_PRIORITY_RANK_SQL}, due_date IS NULL, due_date, id""",
+            (today,),
+        ).fetchall()
     return db.execute(
-        f"""SELECT * FROM task
-            WHERE is_today = 1
-               OR (due_date IS NOT NULL AND due_date < ? AND status != 'done')
+        f"""SELECT * FROM task WHERE bucket = ?
             ORDER BY (status = 'done'), {_PRIORITY_RANK_SQL}, due_date IS NULL, due_date, id""",
-        (today,),
+        (bucket,),
     ).fetchall()
 
 

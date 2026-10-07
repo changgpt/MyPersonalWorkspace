@@ -101,11 +101,43 @@ data/                    # git-ignored; daybook.db lives here
 - **Task lists are ordered priority-then-date** (`db._PRIORITY_RANK_SQL`,
   a `CASE priority WHEN 'high' THEN 0 ...` expression — priority isn't
   alphabetically sortable). Shared by every query that lists *active*
-  tasks (`list_tasks`, `list_today_view_tasks`, `list_today_flagged_tasks`,
+  tasks (`list_tasks`, `list_tasks_by_bucket`, `list_today_flagged_tasks`,
   `list_overdue_tasks`, `tasks_for_project`, the weekly review's open/
   overdue list). Deliberately **not** applied to `tasks_for_note` (keeps
   the order they appear in the note) or `list_tasks_completed_this_week`
   (chronological completion order reads better there).
+- **A task's prioritization is a `bucket`** (`today` / `long_term` /
+  `background` — "Now / Next / Later" under a plainer name), not the
+  `status` column. `status` still only ever means `todo`/`done` in the UI
+  (`in_progress`/`blocked` remain in the schema's `CHECK` constraint for
+  backward compatibility but nothing sets them anymore). `db.set_task_bucket`
+  moves a task between buckets; `db.list_tasks_by_bucket(bucket)` powers
+  both the Today page's three checklists and the Board's three non-Done
+  columns. The `"today"` bucket's query also pulls in anything overdue
+  regardless of its *own* bucket (so nothing slips through unnoticed) —
+  the one case a task can show up away from its stored bucket; `long_term`/
+  `background` show exactly what's filed there, no pull-forward, so a task
+  never appears in two checklists at once. `bucket` replaces the old
+  `is_today` boolean, which is gone from `schema.sql`'s `CREATE TABLE` (a
+  brand-new database never has the column) but can still be sitting in an
+  existing `data/daybook.db` predating this change — `db.init_db`'s
+  `_add_column_if_missing` migration adds `bucket` and, the one time it
+  actually adds the column (`bucket_added`), backfills from whatever
+  `is_today` is already there (`is_today=1` → `today`, `is_today=0` →
+  `background`) before leaving the now-unused `is_today` column in place
+  (SQLite can't cheaply drop a column). Don't read or write `is_today` from
+  any new code.
+- **One consolidated `POST /tasks/<id>/move`** (`tasks.move_view`) handles
+  every drag-and-drop move: it reads optional `bucket` and/or `status`
+  form fields and applies whichever are present, reusing `db.set_task_bucket`
+  and `db.set_task_status` (the latter to keep `completed_at` and the
+  note-checkbox-sync behavior intact). Today's checklists only ever send
+  `bucket`; Board's three bucket columns send `bucket` *and* `status=todo`
+  (so dragging a card out of Done reopens it — safe to send unconditionally,
+  since a task sitting in a non-Done Board column is never already done,
+  by construction of how `board_view` groups tasks); Board's Done column
+  sends only `status=done` (bucket is left untouched, so reopening later
+  returns it to the bucket it came from).
 - **A task's edit/delete redirect target is explicit (`next`), not
   `request.referrer`.** A task can be edited from Today, Board, a note's
   or project's linked-tasks list, or the dashboard — unlike every other
@@ -121,11 +153,35 @@ data/                    # git-ignored; daybook.db lives here
   honors an internal path (starts with `/`). Adding a new place that links
   to `tasks.edit_view` needs the same `next=...`, or Save/Delete there will
   silently fall back to Today instead of returning you to it.
-- **Board drag-and-drop** is plain HTML5 drag/drop (`static/board.js`), no
-  library. It moves the card optimistically and POSTs the new status;
-  on failure it just alerts and relies on a refresh to show the true state
-  — acceptable for a single-user local tool, not a model to extend without
-  reconsidering if this app ever needs to be more robust about it.
+- **Two ways to create a task, on purpose.** The Today/Board pages' quick-add
+  box (`POST /tasks`, `tasks.quick_add_view`) is title-only, always lands in
+  the `today` bucket, and exists for capturing something fast. `GET/POST
+  /tasks/new` (`tasks.new_view`/`create_view`) reuses `tasks/form.html` in a
+  create mode (`task=None`) for everything else (description, priority, due
+  date, project, bucket) — the same template `edit_view` uses, just with the
+  delete button, "Mark as win" link, and skills tagger all hidden behind
+  `{% if task %}` (a task that doesn't exist yet has nothing to delete, tag,
+  or have already been a win).
+- **Drag-and-drop is plain HTML5 drag/drop** (`static/drag-drop.js`), no
+  library, and is generic over any page: a draggable item needs
+  `draggable="true" data-task-id="<id>"`, a drop target needs
+  `data-drop-zone` plus `data-bucket="<bucket>"` and/or `data-status="<status>"`
+  (whichever the zone should set on drop — see the `move` endpoint above).
+  Shared verbatim by the Today page's three checklists and the Board's four
+  columns. Listeners are delegated to `document` (drag) and each zone
+  (drop) rather than bound per-item, so a card htmx swaps back in (the
+  Today checklist's checkbox toggle re-renders its own `<li>`) stays
+  draggable without this script needing to re-scan the DOM. The move
+  happens optimistically and POSTs via `fetch`; on failure it just alerts
+  and relies on a refresh to show the true state — acceptable for a
+  single-user local tool, not a model to extend without reconsidering if
+  this app ever needs to be more robust about it. `_task_row.html` (the
+  checklist `<li>`, shared with dashboard/notes/projects' plain task
+  lists) only renders `draggable`/`data-task-id` when the including
+  template explicitly passes `draggable=true` — true only for the Today
+  checklists (set directly in `today.html`, and by `tasks.toggle_view` on
+  the swapped-in row when it recognizes the page it's swapping into as
+  Today).
 - **SkillEvidence is a lightweight polymorphic link**, not four nullable FK
   columns: `entity_type` (`note`/`task`/`log_entry`/`win`) + `entity_id`,
   resolved back to a title via `_EVIDENCE_ENTITY_TABLES` in `db.py`. The

@@ -99,16 +99,38 @@ def test_todo_style_line_has_no_checkbox_to_sync(db):
     assert db_module.get_task(task["id"])["status"] == "done"
 
 
-def test_today_view_includes_flagged_and_overdue(db):
+def test_today_bucket_includes_flagged_and_overdue(db):
     yesterday = (date.today() - timedelta(days=1)).isoformat()
     tomorrow = (date.today() + timedelta(days=1)).isoformat()
 
-    flagged_id = db_module.create_task(title="Flagged for today", is_today=True)
-    overdue_id = db_module.create_task(title="Overdue", due_date=yesterday)
-    db_module.create_task(title="Due in future, not flagged", due_date=tomorrow)
+    db_module.create_task(title="Flagged for today", bucket="today")
+    db_module.create_task(title="Overdue", bucket="background", due_date=yesterday)
+    db_module.create_task(title="Due in future, not flagged", bucket="background", due_date=tomorrow)
 
-    titles = {t["title"] for t in db_module.list_today_view_tasks()}
+    titles = {t["title"] for t in db_module.list_tasks_by_bucket("today")}
     assert titles == {"Flagged for today", "Overdue"}
+
+
+def test_long_term_and_background_buckets_exclude_overdue_pull_forward(db):
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    db_module.create_task(title="Overdue but long term", bucket="long_term", due_date=yesterday)
+    db_module.create_task(title="Plain long term", bucket="long_term")
+    db_module.create_task(title="Plain background", bucket="background")
+
+    long_term_titles = {t["title"] for t in db_module.list_tasks_by_bucket("long_term")}
+    assert long_term_titles == {"Overdue but long term", "Plain long term"}
+
+    background_titles = {t["title"] for t in db_module.list_tasks_by_bucket("background")}
+    assert background_titles == {"Plain background"}
+
+
+def test_set_task_bucket_moves_a_task(db):
+    task_id = db_module.create_task(title="Move me", bucket="today")
+    db_module.set_task_bucket(task_id, "long_term")
+
+    assert db_module.get_task(task_id)["bucket"] == "long_term"
+    assert task_id not in {t["id"] for t in db_module.list_tasks_by_bucket("today")}
+    assert task_id in {t["id"] for t in db_module.list_tasks_by_bucket("long_term")}
 
 
 def test_overdue_excludes_done_tasks(db):
@@ -155,10 +177,10 @@ def test_list_tasks_orders_by_priority_then_date(db):
     assert titles == ["High, sooner", "High, later", "Medium, no date", "Low, with date"]
 
 
-def test_today_view_orders_by_priority_then_date(db):
-    db_module.create_task(title="Low priority today", priority="low", is_today=True)
-    db_module.create_task(title="High priority today", priority="high", is_today=True)
-    db_module.create_task(title="Medium priority today", priority="medium", is_today=True)
+def test_today_bucket_orders_by_priority_then_date(db):
+    db_module.create_task(title="Low priority today", priority="low", bucket="today")
+    db_module.create_task(title="High priority today", priority="high", bucket="today")
+    db_module.create_task(title="Medium priority today", priority="medium", bucket="today")
 
-    titles = [t["title"] for t in db_module.list_today_view_tasks()]
+    titles = [t["title"] for t in db_module.list_tasks_by_bucket("today")]
     assert titles == ["High priority today", "Medium priority today", "Low priority today"]

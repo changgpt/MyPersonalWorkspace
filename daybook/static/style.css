@@ -18,8 +18,8 @@
   --success: #6b8068;
   --success-soft: #e1e8de;
 
-  --radius: 8px;
-  --radius-sm: 5px;
+  --radius: 10px;
+  --radius-sm: 7px;
   --shadow-sm: 0 1px 2px rgba(42, 39, 36, 0.06);
 
   --tag-clay-bg: #f1dcd3; --tag-clay-fg: #8a3f2c;
@@ -117,6 +117,9 @@ textarea:focus, .rich-editor:focus {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  /* Killing the duration would otherwise leave these as an instant jump,
+     which is the movement these users asked not to have. */
+  .card:has(a.card-title):hover, .task-row:hover { transform: none; }
 }
 
 body {
@@ -164,10 +167,23 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
 .sidebar nav a:hover { background: var(--surface-sunken); text-decoration: none; color: var(--text); }
 .sidebar nav a.active { background: var(--accent-soft); color: var(--accent-hover); font-weight: 600; }
 
+/* Fills the window rather than sitting in a fixed 920px column, which made
+   full-screening the browser do nothing. Deliberately uncapped: every grid
+   here is `auto-fill`, so extra width becomes more columns rather than
+   stretched ones, and the one surface where line length actually matters
+   (.note-article) carries its own measure. min-width: 0 keeps a wide grid
+   child from forcing the flex row wider than the viewport. */
 .main {
   flex: 1;
+  min-width: 0;
   padding: 32px 40px;
-  max-width: 920px;
+}
+
+.main-inner { width: 100%; }
+
+/* A little more breathing room once there's room to spare. */
+@media (min-width: 1600px) {
+  .main { padding: 40px 56px; }
 }
 
 .page-header {
@@ -180,7 +196,9 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
 .page-header h2 { margin: 0; font-size: 22px; }
 
 .search-form { margin-bottom: 24px; }
-.search-form input[type="text"] { width: 320px; }
+/* Wide enough not to look stranded now the page is fluid, but capped --
+   search is a secondary action and shouldn't dominate every page. */
+.search-form input[type="text"] { width: 100%; max-width: 420px; }
 
 .btn {
   display: inline-block;
@@ -207,7 +225,112 @@ input[type="text"], input[type="date"], input[type="file"], select, textarea {
   background: var(--surface);
   color: var(--text);
 }
+
+/* --- Dropdowns -----------------------------------------------------------
+   A native <select> can't be restyled (its popup is drawn by the OS) and
+   can't be opened on hover -- showPicker() needs a real user gesture, and
+   hovering isn't one. So select.js wraps each one in this: the native
+   element stays in the DOM holding the value (so form submission, htmx's
+   change trigger and validation are untouched) and this is what you see. */
+.select { position: relative; display: inline-block; }
+
+/* Visually hidden but NOT display:none -- a display:none `required`
+   select makes the browser refuse to submit with "not focusable". */
+.select-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.select-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 150px;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.select-button:hover { background: var(--surface-sunken); border-color: var(--accent-soft); }
+.select[data-open="true"] .select-button { border-color: var(--accent); background: var(--surface); }
+
+.select-label {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.select-caret {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-bottom: 2px;
+  border-right: 1.5px solid var(--text-muted);
+  border-bottom: 1.5px solid var(--text-muted);
+  transform: rotate(45deg);
+  transition: transform var(--t) var(--ease);
+}
+.select[data-open="true"] .select-caret { transform: rotate(225deg); margin: 2px 0 0; }
+
+.select-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 40;
+  min-width: 100%;
+  max-height: 264px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(42, 39, 36, 0.16);
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+}
+.select[data-open="true"] .select-panel {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.select-option {
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--t-fast) var(--ease);
+}
+.select-option:hover, .select-option.is-active { background: var(--surface-sunken); }
+.select-option[aria-selected="true"] { color: var(--accent-hover); font-weight: 600; }
 textarea { width: 100%; min-height: 320px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* Form fields fill their column; the textarea always did, so a
+   default-width text input next to it looked like a mistake (and looked
+   worse the wider the window got). Filter bars are excluded -- their
+   controls are meant to sit inline at their natural size. */
+form:not(.filter-bar):not(.search-form) > input[type="text"],
+form:not(.filter-bar):not(.search-form) > input[type="date"],
+.form-row input[type="text"],
+.form-row input[type="date"],
+.form-row .select { width: 100%; }
 
 .md-toolbar { display: flex; gap: 4px; margin-top: 4px; }
 .md-toolbar button {
@@ -315,9 +438,11 @@ label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom
 
 .card ul { margin: 8px 0 0; padding-left: 18px; font-size: 14px; }
 
+/* auto-fill means a wider window gets more columns rather than wider
+   cards -- the point of the fluid layout above. */
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 12px;
 }
 
@@ -470,7 +595,9 @@ label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom
    cards. Capped at ~68ch here: past roughly 75 characters a line is
    measurably harder to track back from, and this is the one page meant
    for reading rather than scanning. */
-.note-article { max-width: 68ch; }
+/* Centred now that the page is fluid: a 68ch column pinned to the left of
+   a wide screen reads as a layout bug rather than a choice. */
+.note-article { max-width: 68ch; margin: 0 auto; }
 
 .note-header { margin-bottom: 20px; }
 
@@ -549,9 +676,25 @@ mark { background: var(--accent-soft); color: var(--accent-hover); padding: 0 2p
   margin-bottom: 6px;
 }
 
-.task-row:hover { border-color: var(--accent-soft); }
+/* Grows slightly under the pointer -- the rows are the thing you actually
+   work through, so they get a stronger hover than a card does. position
+   lifts the scaled row (and its shadow) above its neighbours. */
+.task-row {
+  position: relative;
+}
+.task-row:hover {
+  border-color: var(--accent-soft);
+  transform: scale(1.015);
+  box-shadow: 0 2px 10px rgba(42, 39, 36, 0.09);
+  z-index: 1;
+}
+.task-row.dragging:hover { transform: none; box-shadow: none; }
 .task-row input[type="checkbox"] { width: 18px; height: 18px; flex: none; cursor: pointer; }
-.task-row .task-title { flex: 1 1 60%; min-width: 0; }
+/* min-width: 0 is what lets the title wrap normally instead of collapsing
+   to one word per line; the basis is small enough that the priority/due/
+   Edit items stay on the first line whenever they fit, and only wrap
+   below it in a genuinely tight column. */
+.task-row .task-title { flex: 1 1 40%; min-width: 0; }
 .task-row.task-done .task-title { text-decoration: line-through; color: var(--text-faint); }
 
 /* Rows and cards that htmx has just swapped in fade up rather than
@@ -641,6 +784,13 @@ footer.app-footer {
   .form-row { flex-direction: column; }
   .search-form input[type="text"] { width: 100%; }
   .page-header { flex-wrap: wrap; gap: 8px; }
+}
+
+/* Above the mobile breakpoint but still not wide: 3-4 task columns leaves
+   each one too narrow to read a task title in, so halve the count well
+   before the layout actually breaks. */
+@media (max-width: 1200px) {
+  .board, .today-board { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 480px) {

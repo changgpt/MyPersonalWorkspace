@@ -19,6 +19,7 @@
   <script src="{{ url_for('static', filename='rich-editor.js') }}"></script>
   <script src="{{ url_for('static', filename='note-checkboxes.js') }}"></script>
   <script src="{{ url_for('static', filename='toasts.js') }}"></script>
+  <script src="{{ url_for('static', filename='select.js') }}"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -40,10 +41,14 @@
       <button type="button" class="btn btn-secondary" onclick="toggleDarkMode()" style="margin-top:16px; width:100%;">Toggle dark mode</button>
     </aside>
     <main class="main">
-      <form class="search-form" action="{{ url_for('search.search_view') }}" method="get">
-        <input type="text" id="global-search" name="q" placeholder="Search notes… (/)" value="{{ request.args.get('q', '') }}">
-      </form>
-      {% block content %}{% endblock %}
+      {# The page fills the window; .main-inner only stops the content
+         stretching to absurd widths on a very large monitor. #}
+      <div class="main-inner">
+        <form class="search-form" action="{{ url_for('search.search_view') }}" method="get">
+          <input type="text" id="global-search" name="q" placeholder="Search notes… (/)" value="{{ request.args.get('q', '') }}">
+        </form>
+        {% block content %}{% endblock %}
+      </div>
     </main>
   </div>
   {% with messages = get_flashed_messages(with_categories=true) %}

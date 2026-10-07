@@ -56,6 +56,7 @@ daybook/
   static/note-checkboxes.js # makes a rendered note's own checkboxes live
   static/drag-drop.js       # generic delegated HTML5 drag/drop (Today + Board)
   static/toasts.js          # flash messages + window.showToast()
+  static/select.js          # styled hover-to-open dropdowns over <select>
   blueprints/           # one file per feature area (notes, people, projects,
                         # tasks, topics, search, settings, dashboard, skills,
                         # wins, activity, weekly_review)
@@ -307,6 +308,34 @@ data/                    # git-ignored; daybook.db lives here
   just copies the sqlite file to `data/backups/`. Deliberately separate
   from the "export everything" feature: one is a full structured export,
   the other is a raw file copy for disaster recovery.
+- **The layout is fluid — don't put the content back in a fixed column.**
+  `.main` fills the window with no max-width (it used to cap at 920px,
+  which made full-screening the browser do nothing). That works because
+  every grid is `auto-fill`, so extra width becomes *more columns* rather
+  than stretched ones, and the single surface where line length matters
+  (`.note-article`) carries its own `68ch` measure. `.main` needs
+  `min-width: 0` or a wide grid child forces the flex row past the
+  viewport. Task/board columns drop from 3-4 to 2 below 1200px — well
+  before the layout breaks — because a task title needs real width to be
+  readable. Form fields fill their column
+  (`form:not(.filter-bar):not(.search-form) > input`, `.form-row` children);
+  filter bars and the search box are excluded, since their controls are
+  meant to sit inline at their natural size.
+- **Dropdowns are a custom control** (`static/select.js` + the `.select-*`
+  rules), because a native `<select>` can't be restyled (its popup is drawn
+  by the OS, so border-radius, our colours and the dark theme never reach
+  it) and can't be opened on hover (`showPicker()` throws without a real
+  user gesture, and hovering isn't one). The native element **stays in the
+  DOM** as the value holder — visually hidden but *not* `display: none`,
+  which would make a `required` select unfocusable and block form
+  submission — so form serialization, constraint validation, and the
+  `change` event the filter bars' `hx-trigger` listens for all still see an
+  ordinary select. Selecting an option sets `selectedIndex` and dispatches
+  `change` manually (assigning `.value` fires nothing). Opens on hover
+  after a short delay and closes after a longer one, so moving diagonally
+  onto the panel doesn't close it; click, arrow keys, Enter and Escape all
+  work too. `enhanceAll()` re-runs on `htmx:afterSettle` and is guarded by
+  `data-enhanced`, so swapped-in markup gets enhanced exactly once.
 - **Motion is one shared system, not per-element.** `--ease`/`--t`/`--t-fast`
   in `style.css` are the only easing and durations used; one rule lists
   every interactive element (buttons, cards, nav links, task rows, board

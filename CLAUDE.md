@@ -239,6 +239,13 @@ data/                    # git-ignored; daybook.db lives here
   just copies the sqlite file to `data/backups/`. Deliberately separate
   from the "export everything" feature: one is a full structured export,
   the other is a raw file copy for disaster recovery.
+- **Headings use a serif font, body text a sans-serif one** — `--font-serif`
+  (Georgia, falling back through a few other system serifs) on every
+  `h1`-`h6` via one global rule in `style.css`, `--font-sans` (the original
+  system-UI stack) everywhere else. No font files are vendored or loaded
+  from a CDN (consistent with htmx/Turndown below) — Georgia ships with
+  essentially every OS, so the stack is system-only by design, not a
+  placeholder waiting for a real webfont.
 - **Dark mode is pure CSS + localStorage**, no server-side setting: a
   `:root[data-theme="dark"]` block in `style.css` overrides the same
   custom properties the light theme defines, toggled by

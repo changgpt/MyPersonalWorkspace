@@ -30,6 +30,12 @@
   --tag-slate-bg: #e3e4e6; --tag-slate-fg: #4b4f57;
   --tag-moss-bg: #e4e9d9; --tag-moss-fg: #556b2f;
   --tag-rose-bg: #f3dde0; --tag-rose-fg: #9a4a56;
+
+  /* Body copy stays a clean system sans-serif for readability; headings
+     use an editorial serif (the "Vogue"/Times feel) for some personality --
+     same split Claude's own branding makes between UI text and headlines. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-serif: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, "Times New Roman", serif;
 }
 
 :root[data-theme="dark"] {
@@ -64,11 +70,13 @@
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   background: var(--bg);
   color: var(--text);
   line-height: 1.5;
 }
+
+h1, h2, h3, h4, h5, h6 { font-family: var(--font-serif); }
 
 a { color: var(--accent); text-decoration: none; }
 a:hover { color: var(--accent-hover); text-decoration: underline; }

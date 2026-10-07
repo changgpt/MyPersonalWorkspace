@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}People — Daybook{% endblock %}
+{% block title %}People — FiloFax{% endblock %}
 {% block content %}
 <div class="page-header"><h2>People</h2></div>
 {% if people %}
@@ -7,7 +7,11 @@
   {% for person in people %}
   <div class="card">
     <a class="card-title" href="{{ url_for('people.detail_view', person_id=person['id']) }}">{{ person['name'] }}</a>
-    {% if person['role'] %}<div class="card-meta">{{ person['role'] }}</div>{% endif %}
+    {% if person['role'] or person['team'] %}
+    <div class="card-meta">
+      {{ person['role'] }}{% if person['role'] and person['team'] %} · {% endif %}{{ person['team'] }}
+    </div>
+    {% endif %}
   </div>
   {% endfor %}
 </div>

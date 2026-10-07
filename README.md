@@ -1,4 +1,4 @@
-# Daybook
+# FiloFax
 
 A personal, local-only web app for managing your day at work: typed notes, a
 to-do list and task tracker, an activity log, a skills tracker, a wins log,

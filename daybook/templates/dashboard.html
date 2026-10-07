@@ -1,10 +1,21 @@
 {% extends "base.html" %}
 {% from "_macros.html" import note_card %}
-{% block title %}Dashboard — Daybook{% endblock %}
+{% block title %}Dashboard — FiloFax{% endblock %}
 {% block content %}
 <div class="greeting-banner">
   <h2 class="greeting-text">{{ greeting }}</h2>
   <p class="greeting-quote">“{{ quote.text }}” <span class="greeting-author">— {{ quote.author }}</span></p>
+</div>
+
+<div class="stat-tile-row">
+  <div class="stat-tile">
+    <div class="stat-tile-value">Week {{ internship_week }}</div>
+    <div class="stat-tile-label">of the internship</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-tile-value">{{ internship_days_left }}</div>
+    <div class="stat-tile-label">days left until {{ internship_end_date_display }}</div>
+  </div>
 </div>
 
 <div class="page-header">

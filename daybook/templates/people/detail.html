@@ -1,14 +1,28 @@
 {% extends "base.html" %}
 {% from "_macros.html" import note_card %}
-{% block title %}{{ person['name'] }} — Daybook{% endblock %}
+{% block title %}{{ person['name'] }} — FiloFax{% endblock %}
 {% block content %}
 <div class="page-header">
   <h2>{{ person['name'] }}</h2>
+  <a class="btn btn-secondary" href="{{ url_for('people.edit_view', person_id=person['id']) }}">Edit</a>
 </div>
-{% if person['role'] %}<p class="card-meta">{{ person['role'] }}</p>{% endif %}
 
-<h3>Interactions</h3>
-<p class="flash-hint">Tasks and wins linked to {{ person['name'] }} will appear here in later phases.</p>
+<div class="card" style="margin-bottom: 24px;">
+  {% if person['role'] or person['team'] %}
+  <p class="card-meta">
+    {{ person['role'] }}{% if person['role'] and person['team'] %} · {% endif %}{{ person['team'] }}
+  </p>
+  {% endif %}
+  {% if person['how_met'] %}<p><strong>How you met:</strong> {{ person['how_met'] }}</p>{% endif %}
+  {% if person['last_contacted_date'] %}<p><strong>Last contacted:</strong> {{ person['last_contacted_date'] }}</p>{% endif %}
+  {% if person['notes'] %}<p><strong>Useful context:</strong> {{ person['notes'] }}</p>{% endif %}
+  {% if person['follow_up'] %}<p><strong>Follow up:</strong> {{ person['follow_up'] }}</p>{% endif %}
+  {% if not (person['role'] or person['team'] or person['how_met'] or person['last_contacted_date'] or person['notes'] or person['follow_up']) %}
+  <p class="flash-hint">No details yet — <a href="{{ url_for('people.edit_view', person_id=person['id']) }}">add some</a>.</p>
+  {% endif %}
+</div>
+
+<h3>Notes</h3>
 {% if notes %}
   {% for note in notes %}
     {{ note_card(note) }}

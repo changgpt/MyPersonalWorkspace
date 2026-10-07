@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Project conventions and layout for Daybook. Read this before making changes.
+Project conventions and layout for FiloFax. Read this before making changes.
 
 ## What this is
 
@@ -70,6 +70,18 @@ data/                    # git-ignored; daybook.db lives here
   table per note relationship (`note_person`, `note_project`, `note_topic`),
   and a detail page listing every note linked to that entity. Follow this
   pattern for any future taggable entity.
+- **Person is also a lightweight CRM profile** on top of the tag-entity
+  pattern above: `role`, `team`, `how_met`, `last_contacted_date`,
+  `follow_up`, plus the original `notes` column (labeled "Useful context"
+  in the UI — it predates the other CRM fields and already meant free-form
+  notes about the person, so it was reused rather than adding a redundant
+  column; `db.update_person`'s `context` parameter maps to it). There's no
+  `/people/new` — people are still only created by tagging them on a note
+  (`find_or_create_person`), matching the Tag-like entities convention
+  above; `GET/POST /people/<id>/edit` only ever edits a person that
+  already exists. `templates/people/detail.html` shows every filled-in
+  field in one card and an empty-state prompt to "add some" when none are
+  set yet, rather than always rendering empty labels.
 - **Tag input in forms** is a single comma-separated text field with an
   HTML `<datalist>` for autocomplete (not a JS multi-select widget) — simple
   and dependency-free. Known limitation: the browser's datalist suggests
@@ -270,6 +282,18 @@ data/                    # git-ignored; daybook.db lives here
   surprise than a repeat. Keep this module free of any DB or network call;
   it's a presentation helper like `markdown_utils.py`, not a Phase 4
   AI feature.
+- **The Dashboard's internship countdown** (`daybook/internship.py`,
+  alongside `greetings.py` — same "pure presentation, no DB, no network"
+  rule) computes `week_number(start_date)` (1-indexed, clamped to 1 if
+  `today` is before `start_date`) and `days_remaining(end_date)` (clamped
+  to 0 once past it) from `config.INTERNSHIP_START_DATE`/
+  `INTERNSHIP_END_DATE` — both overridable in `.env` as `YYYY-MM-DD`,
+  parsed by `config._parse_date` which falls back to the hardcoded default
+  on anything malformed rather than crashing the app. The displayed end
+  date is built manually in `dashboard.py`
+  (`f"{d:%B} {d.day}, {d:%Y}"`), not `strftime("%b %-d, %Y")` — `%-d` (no
+  leading zero) is a glibc/macOS `strftime` extension that raises on
+  Windows, and this app needs to run there too.
 - **Keyboard shortcuts** (`static/app.js`): `n` new note, `t` Tasks
   (Today view, whose quick-add input has `autofocus`), `/` focuses
   `#global-search`. Guarded against firing while typing in a field or with

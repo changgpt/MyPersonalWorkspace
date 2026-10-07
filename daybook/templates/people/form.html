@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ person['name'] }} — FiloFax{% endblock %}
+{% block content %}
+<div class="page-header"><h2>Edit {{ person['name'] }}</h2></div>
+
+<form method="post" action="{{ url_for('people.update_view', person_id=person['id']) }}">
+  <label for="name">Name</label>
+  <input type="text" id="name" name="name" required value="{{ person['name'] }}">
+
+  <div class="form-row">
+    <div>
+      <label for="role">Role</label>
+      <input type="text" id="role" name="role" value="{{ person['role'] or '' }}">
+    </div>
+    <div>
+      <label for="team">Team</label>
+      <input type="text" id="team" name="team" value="{{ person['team'] or '' }}">
+    </div>
+    <div>
+      <label for="last_contacted_date">Last contacted</label>
+      <input type="date" id="last_contacted_date" name="last_contacted_date"
+             value="{{ person['last_contacted_date'] or '' }}">
+    </div>
+  </div>
+
+  <label for="how_met">How you met</label>
+  <input type="text" id="how_met" name="how_met" value="{{ person['how_met'] or '' }}">
+
+  <label for="context">Useful context</label>
+  <textarea id="context" name="context" style="min-height:100px;">{{ person['notes'] or '' }}</textarea>
+
+  <label for="follow_up">Follow up</label>
+  <textarea id="follow_up" name="follow_up" style="min-height:80px;">{{ person['follow_up'] or '' }}</textarea>
+
+  <div style="margin-top: 24px;">
+    <button class="btn" type="submit">Save</button>
+    <a class="btn btn-secondary" href="{{ url_for('people.detail_view', person_id=person['id']) }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

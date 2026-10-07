@@ -13,7 +13,14 @@ CREATE TABLE IF NOT EXISTS person (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
     role TEXT,
-    notes TEXT
+    team TEXT,
+    how_met TEXT,
+    -- "Useful context" in the UI -- this column predates the CRM fields
+    -- below and already meant free-form notes about the person, so it's
+    -- reused rather than adding a redundant column.
+    notes TEXT,
+    last_contacted_date TEXT,
+    follow_up TEXT
 );
 
 CREATE TABLE IF NOT EXISTS project (

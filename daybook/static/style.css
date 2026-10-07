@@ -1,4 +1,4 @@
-/* Daybook — warm neutral design system.
+/* FiloFax — warm neutral design system.
    Colors are CSS custom properties so the palette (incl. a future dark
    mode) can be retuned in one place. */
 
@@ -294,22 +294,19 @@ label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom
 }
 
 .greeting-banner {
-  background: var(--accent-soft);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 20px 24px;
-  margin-bottom: 24px;
+  text-align: center;
+  margin: 8px 0 28px;
 }
 
 .greeting-text {
-  margin: 0 0 6px;
-  font-size: 22px;
+  margin: 0 0 8px;
+  font-size: 30px;
   color: var(--accent-hover);
 }
 
 .greeting-quote {
   margin: 0;
-  font-size: 14px;
+  font-size: 15px;
   font-style: italic;
   color: var(--text-muted);
 }
@@ -317,6 +314,33 @@ label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom
 .greeting-author {
   font-style: normal;
   color: var(--text-faint);
+}
+
+.stat-tile-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.stat-tile {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  text-align: center;
+}
+
+.stat-tile-value {
+  font-family: var(--font-serif);
+  font-size: 28px;
+  color: var(--accent-hover);
+}
+
+.stat-tile-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 2px;
 }
 
 .empty-state {
@@ -435,4 +459,5 @@ footer.app-footer {
 
 @media (max-width: 480px) {
   .board, .today-board { grid-template-columns: 1fr; }
+  .stat-tile-row { flex-direction: column; }
 }

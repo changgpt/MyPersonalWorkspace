@@ -50,6 +50,10 @@ def init_db():
         # it wasn't actively tracked either way.
         db.execute("UPDATE task SET bucket = 'today' WHERE is_today = 1")
         db.execute("UPDATE task SET bucket = 'background' WHERE is_today = 0")
+    _add_column_if_missing(db, "person", "team", "TEXT")
+    _add_column_if_missing(db, "person", "how_met", "TEXT")
+    _add_column_if_missing(db, "person", "last_contacted_date", "TEXT")
+    _add_column_if_missing(db, "person", "follow_up", "TEXT")
     db.commit()
 
 
@@ -182,6 +186,17 @@ def list_people():
 def get_person(person_id):
     db = get_db()
     return db.execute("SELECT * FROM person WHERE id = ?", (person_id,)).fetchone()
+
+
+def update_person(person_id, name, role, team, how_met, context, last_contacted_date, follow_up):
+    db = get_db()
+    db.execute(
+        """UPDATE person SET name = ?, role = ?, team = ?, how_met = ?, notes = ?,
+                              last_contacted_date = ?, follow_up = ?
+           WHERE id = ?""",
+        (name, role, team, how_met, context, last_contacted_date, follow_up, person_id),
+    )
+    db.commit()
 
 
 def list_projects():

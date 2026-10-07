@@ -8,40 +8,41 @@
 </div>
 
 <form class="filter-bar" method="get">
-  <select name="type">
+  <select name="type" onchange="this.form.submit()">
     <option value="">All types</option>
     {% for nt in note_types %}
       <option value="{{ nt['id'] }}" {{ 'selected' if filters.note_type_id == nt['id'] }}>{{ nt['name'] }}</option>
     {% endfor %}
   </select>
-  <select name="person">
+  <select name="person" onchange="this.form.submit()">
     <option value="">All people</option>
     {% for p in people %}
       <option value="{{ p['id'] }}" {{ 'selected' if filters.person_id == p['id'] }}>{{ p['name'] }}</option>
     {% endfor %}
   </select>
-  <select name="project">
+  <select name="project" onchange="this.form.submit()">
     <option value="">All projects</option>
     {% for proj in projects %}
       <option value="{{ proj['id'] }}" {{ 'selected' if filters.project_id == proj['id'] }}>{{ proj['name'] }}</option>
     {% endfor %}
   </select>
-  <select name="topic">
+  <select name="topic" onchange="this.form.submit()">
     <option value="">All topics</option>
     {% for t in topics %}
       <option value="{{ t['id'] }}" {{ 'selected' if filters.topic_id == t['id'] }}>{{ t['name'] }}</option>
     {% endfor %}
   </select>
-  <input type="date" name="from" value="{{ filters.date_from or '' }}">
-  <input type="date" name="to" value="{{ filters.date_to or '' }}">
-  <button class="btn btn-secondary" type="submit">Filter</button>
+  <input type="date" name="from" value="{{ filters.date_from or '' }}" onchange="this.form.submit()">
+  <input type="date" name="to" value="{{ filters.date_to or '' }}" onchange="this.form.submit()">
   <a class="btn btn-secondary" href="{{ url_for('notes.list_view') }}">Clear</a>
 </form>
 
 {% if notes %}
+<div class="card-grid">
   {% for note in notes %}
     {{ note_card(note) }}
   {% endfor %}
+</div>
 {% else %}
   <div class="empty-state">No notes match these filters.</div>
 {% endif %}

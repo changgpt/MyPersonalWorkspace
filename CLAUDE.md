@@ -87,6 +87,15 @@ data/                    # git-ignored; daybook.db lives here
   and dependency-free. Known limitation: the browser's datalist suggests
   whole-field matches, not per-comma-segment, so autocomplete only helps
   while typing the first tag in the field.
+- **The Notes list auto-applies its filters.** Each `<select>`/date input in
+  `notes/list.html`'s filter bar has `onchange="this.form.submit()"` — no
+  separate "Filter" button, since a GET form already re-renders correctly
+  from the query string on every change; "Clear" stays as a plain link back
+  to the unfiltered URL. Notes render in a `.card-grid` (the same
+  auto-fill grid People/Projects use), not stacked full-width — if a future
+  list page's filter bar feels clunky for the same reason (an explicit
+  submit button before anything happens), prefer this pattern over adding
+  htmx for it.
 - **Markdown rendering** happens only at display time (`| markdown` Jinja
   filter in templates); the stored `body_markdown` is always the raw
   Markdown source, never pre-rendered HTML.

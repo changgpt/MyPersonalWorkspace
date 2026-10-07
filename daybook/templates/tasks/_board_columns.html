@@ -1,0 +1,20 @@
+{# Swapped in on its own when the filter bar changes (see tasks.board_view's
+   HX-Request branch), so it carries its own id and outer element. #}
+<div class="board" id="board-columns">
+  {% for column in board_columns %}
+  <div class="board-column">
+    <h3>{{ column_labels[column] }}</h3>
+    <div class="board-column-list" data-drop-zone
+         {% if column == 'done' %}data-status="done"{% else %}data-bucket="{{ column }}" data-status="todo"{% endif %}>
+      {% for task in columns[column] %}
+      <div class="board-card" draggable="true" data-task-id="{{ task['id'] }}">
+        <div>{{ task['title'] }}</div>
+        <span class="tag tag-{{ {'low': 'sage', 'medium': 'ochre', 'high': 'rose'}[task['priority']] }}">{{ task['priority'] }}</span>
+        {% if task['due_date'] %}<div class="card-meta">due {{ task['due_date'] | human_date }}</div>{% endif %}
+        <a class="pill-link" href="{{ url_for('tasks.edit_view', task_id=task['id'], next=request.full_path) }}">Edit</a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>

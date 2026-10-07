@@ -1,0 +1,21 @@
+{# Swapped in on its own after a quick-add (see tasks.today_view /
+   quick_add_view), so it carries its own id and outer element. Drag-drop
+   keeps working on the replacement markup because drag-drop.js delegates
+   every listener to document rather than binding these zones. #}
+<div class="today-board" id="today-checklists">
+  {% for bucket in buckets %}
+  <div class="board-column">
+    <h3>{{ bucket_labels[bucket] }}</h3>
+    <ul class="task-checklist board-column-list" data-drop-zone data-bucket="{{ bucket }}">
+      {% for task in tasks_by_bucket[bucket] %}
+        {% set next_url = request.path %}
+        {% set draggable = true %}
+        {% include "tasks/_task_row.html" %}
+      {% endfor %}
+    </ul>
+    {% if not tasks_by_bucket[bucket] %}
+    <div class="empty-state">Nothing here yet.</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>

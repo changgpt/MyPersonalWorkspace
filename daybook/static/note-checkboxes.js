@@ -42,7 +42,9 @@
         }).catch(() => {
           checkbox.checked = !done;
           item.classList.toggle("note-task-done", !done);
-          alert("Could not save that — please refresh and try again.");
+          if (window.showToast) {
+            window.showToast("Could not save that — refresh and try again.", "error");
+          }
         });
       });
     });

@@ -57,7 +57,13 @@
   <span class="flash-hint">Sends this week's summary (not full note text) to the Anthropic API, and overwrites the fields below.</span>
 </form>
 {% endif %}
-<form method="post" action="{{ url_for('weekly_review.save_view', week_str=week_str) }}">
+{# Saves without a reload (the reflection fields are long-form, so losing
+   scroll position mid-write was the worst of it) -- the 204 response means
+   htmx swaps nothing, and the toast is the confirmation. #}
+<form method="post" action="{{ url_for('weekly_review.save_view', week_str=week_str) }}"
+      hx-post="{{ url_for('weekly_review.save_view', week_str=week_str) }}"
+      hx-swap="none"
+      hx-on::after-request="if (event.detail.successful) window.showToast('Weekly review saved')">
   <label for="went_well">What went well</label>
   <textarea id="went_well" name="went_well" style="min-height:100px;">{{ review['went_well'] if review else '' }}</textarea>
 

@@ -2,7 +2,7 @@ from datetime import date
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
-from .. import ai, db, task_extraction
+from .. import ai, db, htmx, task_extraction
 from ..docx_utils import docx_bytes_to_markdown
 from ..tag_utils import tag_names_as_text as _tag_names_as_text
 from ..tag_utils import tag_names_to_ids as _tag_names_to_ids
@@ -32,7 +32,7 @@ def list_view():
     )
     notes = db.list_notes(**filters)
     return render_template(
-        "notes/list.html",
+        htmx.template_for("notes/list.html", "notes/_grid.html"),
         notes=notes,
         note_types=db.list_note_types(),
         people=db.list_people(),

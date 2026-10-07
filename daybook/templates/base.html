@@ -18,6 +18,7 @@
   <script src="{{ url_for('static', filename='editor-toolbar.js') }}"></script>
   <script src="{{ url_for('static', filename='rich-editor.js') }}"></script>
   <script src="{{ url_for('static', filename='note-checkboxes.js') }}"></script>
+  <script src="{{ url_for('static', filename='toasts.js') }}"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -42,15 +43,20 @@
       <form class="search-form" action="{{ url_for('search.search_view') }}" method="get">
         <input type="text" id="global-search" name="q" placeholder="Search notes… (/)" value="{{ request.args.get('q', '') }}">
       </form>
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          {% for category, message in messages %}
-            <div class="empty-state" style="text-align:left; border-color: var(--accent-soft);">{{ message }}</div>
-          {% endfor %}
-        {% endif %}
-      {% endwith %}
       {% block content %}{% endblock %}
     </main>
   </div>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="toast-stack">
+      {% for category, message in messages %}
+      <div class="toast toast-{{ category }}">
+        <span class="toast-text">{{ message }}</span>
+        <button class="toast-close" type="button" aria-label="Dismiss">&times;</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
 </body>
 </html>

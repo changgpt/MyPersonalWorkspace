@@ -9,7 +9,16 @@
   </div>
 </div>
 
-<form class="filter-bar" method="get">
+{# Same pattern as the Notes filter bar: swaps the columns in place and
+   pushes the filtered URL, while the URL still renders the full page on a
+   cold load. #}
+<form class="filter-bar" method="get"
+      hx-get="{{ url_for('tasks.board_view') }}"
+      hx-trigger="change"
+      hx-target="#board-columns"
+      hx-swap="outerHTML"
+      hx-push-url="true"
+      hx-indicator="#board-columns">
   <select name="project">
     <option value="">All projects</option>
     {% for p in projects %}
@@ -22,28 +31,10 @@
       <option value="{{ pr }}" {{ 'selected' if filters.priority == pr }}>{{ pr }}</option>
     {% endfor %}
   </select>
-  <button class="btn btn-secondary" type="submit">Filter</button>
   <a class="btn btn-secondary" href="{{ url_for('tasks.board_view') }}">Clear</a>
 </form>
 
-<div class="board">
-  {% for column in board_columns %}
-  <div class="board-column">
-    <h3>{{ column_labels[column] }}</h3>
-    <div class="board-column-list" data-drop-zone
-         {% if column == 'done' %}data-status="done"{% else %}data-bucket="{{ column }}" data-status="todo"{% endif %}>
-      {% for task in columns[column] %}
-      <div class="board-card" draggable="true" data-task-id="{{ task['id'] }}">
-        <div>{{ task['title'] }}</div>
-        <span class="tag tag-{{ {'low': 'sage', 'medium': 'ochre', 'high': 'rose'}[task['priority']] }}">{{ task['priority'] }}</span>
-        {% if task['due_date'] %}<div class="card-meta">due {{ task['due_date'] | human_date }}</div>{% endif %}
-        <a class="pill-link" href="{{ url_for('tasks.edit_view', task_id=task['id'], next=request.full_path) }}">Edit</a>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endfor %}
-</div>
+{% include "tasks/_board_columns.html" %}
 
 <p class="flash-hint">Drag a card between columns to re-prioritize it or mark it done.</p>
 <script src="{{ url_for('static', filename='drag-drop.js') }}"></script>

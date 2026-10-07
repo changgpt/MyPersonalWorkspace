@@ -2,7 +2,7 @@ from urllib.parse import urlparse
 
 from flask import Blueprint, abort, redirect, render_template, request, url_for
 
-from .. import db
+from .. import db, htmx
 
 bp = Blueprint("tasks", __name__, url_prefix="/tasks")
 
@@ -33,14 +33,18 @@ def _safe_next(default):
     return default
 
 
-@bp.route("")
-def today_view():
+def _render_checklists(template):
     return render_template(
-        "tasks/today.html",
+        template,
         buckets=BUCKETS,
         bucket_labels=BUCKET_LABELS,
         tasks_by_bucket={bucket: db.list_tasks_by_bucket(bucket) for bucket in BUCKETS},
     )
+
+
+@bp.route("")
+def today_view():
+    return _render_checklists(htmx.template_for("tasks/today.html", "tasks/_checklists.html"))
 
 
 @bp.route("/board")
@@ -52,7 +56,7 @@ def board_view():
     for task in tasks:
         columns["done" if task["status"] == "done" else task["bucket"]].append(task)
     return render_template(
-        "tasks/board.html",
+        htmx.template_for("tasks/board.html", "tasks/_board_columns.html"),
         columns=columns,
         board_columns=BOARD_COLUMNS,
         column_labels=BOARD_COLUMN_LABELS,
@@ -66,6 +70,10 @@ def quick_add_view():
     title = request.form.get("title", "").strip()
     if title:
         db.create_task(title=title, bucket="today")
+    # htmx swaps the re-rendered checklists straight into the page; a plain
+    # form post (no JS) still gets the redirect it expects.
+    if htmx.is_htmx():
+        return _render_checklists("tasks/_checklists.html")
     return redirect(url_for("tasks.today_view"))
 
 

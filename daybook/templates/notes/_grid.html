@@ -1,0 +1,14 @@
+{# Swapped in on its own when the filter bar changes (see notes.list_view's
+   HX-Request branch), so it must carry its own id and outer element. #}
+{% from "_macros.html" import note_card %}
+<div id="notes-results">
+  {% if notes %}
+  <div class="card-grid">
+    {% for note in notes %}
+      {{ note_card(note) }}
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">No notes match these filters.</div>
+  {% endif %}
+</div>

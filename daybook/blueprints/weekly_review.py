@@ -1,6 +1,6 @@
 from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
 
-from .. import ai, db
+from .. import ai, db, htmx
 
 bp = Blueprint("weekly_review", __name__, url_prefix="/weekly-review")
 
@@ -43,6 +43,10 @@ def save_view(week_str):
         to_improve=form.get("to_improve", ""),
         focus_next_week=form.get("focus_next_week", ""),
     )
+    # Nothing to swap: the page already shows what was just saved, so htmx
+    # only needs the success status (the template raises the toast).
+    if htmx.is_htmx():
+        return ("", 204)
     return redirect(url_for("weekly_review.detail_view", week_str=week_str))
 
 

@@ -41,20 +41,28 @@ daybook/
                         # and automatically by `python run.py` on every startup
   seed.py              # default note types + their Markdown templates
   markdown_utils.py    # render_markdown(text) -> HTML
+  date_utils.py         # human_date / human_date_range Jinja filters
   docx_utils.py         # docx_bytes_to_markdown(bytes) -> Markdown
-  task_extraction.py    # extract_action_items(markdown) -> ["line text", ...]
+  task_extraction.py    # action-item + checkbox-line parsing of a note body
   tag_utils.py           # shared comma-separated-tag-field parsing (notes + wins)
+  greetings.py           # Dashboard greeting + motivational quote
+  internship.py          # Dashboard "Week N" + days-left countdown
+  htmx.py                # template_for/is_htmx: one route, page or fragment
   ai.py                  # Phase 4: optional Anthropic API features, off by default
   static/app.js           # Phase 5: keyboard shortcuts (n/t//) + dark mode toggle
   static/editor-toolbar.js # formatting toolbar for plain Markdown textareas
                           # (note-type templates only -- see note body below)
   static/rich-editor.js    # WYSIWYG note body editor (contenteditable + Turndown)
+  static/note-checkboxes.js # makes a rendered note's own checkboxes live
+  static/drag-drop.js       # generic delegated HTML5 drag/drop (Today + Board)
+  static/toasts.js          # flash messages + window.showToast()
   blueprints/           # one file per feature area (notes, people, projects,
                         # tasks, topics, search, settings, dashboard, skills,
                         # wins, activity, weekly_review)
-  templates/            # Jinja templates, mirroring the blueprints
+  templates/            # Jinja templates, mirroring the blueprints;
+                        # _name.html partials are htmx swap targets the
+                        # full page also includes
   static/style.css       # warm-neutral design system (CSS custom properties)
-  static/board.js        # vanilla JS drag-and-drop for the task board
   static/vendor/         # vendored JS (htmx, turndown)
 tests/                   # pytest; conftest.py gives `app`/`client`/`db` fixtures
 run.py                   # entry point: `python run.py`
@@ -121,12 +129,30 @@ data/                    # git-ignored; daybook.db lives here
   `dustyblue`, `plum`, `slate`, `moss`, `rose`), each with a CSS class in
   `style.css` (`.tag-<color>`). Add new colors there before using them in
   `settings.NOTE_TYPE_COLORS`.
-- **htmx usage is minimal by design**: the note-type template prefill
-  (`GET /notes/template?note_type_id=`), wired via `hx-get`/
-  `hx-trigger="change"` on the type `<select>`, and the Today checklist's
-  checkbox toggle (`POST /tasks/<id>/toggle`, swaps in the updated `<li>`).
-  Prefer plain forms/links over htmx unless there's a genuine partial-update
-  case.
+- **Interactions update in place, and one route serves both halves.** htmx
+  used to be deliberately minimal here; it isn't any more — every click
+  reloading the whole page was the main thing that made the app feel
+  static. The pattern, applied to the Notes/Board/Activity filter bars, the
+  Today quick-add, the Activity add-entry form and the weekly review save:
+  - The swappable part of the page lives in a `_partial.html` the full page
+    `include`s, so the two can't drift. It owns its own wrapper id
+    (`#notes-results`, `#board-columns`, `#today-checklists`,
+    `#activity-items`) and the template's `hx-target` points at that id.
+  - The view renders `htmx.template_for(full_page, fragment)`
+    (`daybook/htmx.py`, keyed on the `HX-Request` header): htmx gets the
+    fragment, a browser gets the whole page. Routes that *write*
+    (`quick_add_view`, `activity.create_view`, `weekly_review.save_view`)
+    branch on `htmx.is_htmx()` and still return their redirect otherwise,
+    so every form keeps working if JS doesn't run.
+  - Filter bars use `hx-get` + `hx-trigger="change"` + `hx-push-url="true"`
+    rather than `onchange="this.form.submit()"`. Pushing the URL is what
+    keeps a filtered view shareable, bookmarkable, reload-safe and
+    back-button-correct — don't drop it when adding a new filter.
+  - `hx-indicator` points at the target so it dims (`.htmx-request`) while
+    the request is in flight.
+  - A save with nothing to redraw (the weekly review) returns `204` and the
+    template raises a toast in `hx-on::after-request`; don't invent a
+    fragment just to have something to swap.
 - **Action-item extraction** (`task_extraction.extract_action_items`) finds
   `- [ ]` and `TODO:` lines in a note's body. `db.sync_tasks_from_note` is
   called after every note save; it creates a task per new line, keyed by
@@ -205,12 +231,18 @@ data/                    # git-ignored; daybook.db lives here
   `data-drop-zone` plus `data-bucket="<bucket>"` and/or `data-status="<status>"`
   (whichever the zone should set on drop — see the `move` endpoint above).
   Shared verbatim by the Today page's three checklists and the Board's four
-  columns. Listeners are delegated to `document` (drag) and each zone
-  (drop) rather than bound per-item, so a card htmx swaps back in (the
-  Today checklist's checkbox toggle re-renders its own `<li>`) stays
-  draggable without this script needing to re-scan the DOM. The move
-  happens optimistically and POSTs via `fetch`; on failure it just alerts
-  and relies on a refresh to show the true state — acceptable for a
+  columns. **Every** listener is delegated to `document` — including
+  `dragover`/`drop`, which bubble — rather than bound to the zones found at
+  load time: htmx now swaps whole checklists and columns in place, and
+  anything bound per-zone would silently stop working on the replacement
+  markup. `dragover` also sets `.drop-active` on the zone under the pointer
+  (cleared on `dragleave`/`dragend`/`drop`), since previously there was no
+  way to tell which column would receive the card, or that the drag was
+  being tracked at all. Note that Playwright's mouse-driven drag does not
+  emit `dragover`, so that highlight has to be verified by dispatching a
+  real `DragEvent` rather than by dragging with the mouse. The move
+  happens optimistically and POSTs via `fetch`; on failure it raises a
+  toast and relies on a refresh to show the true state — acceptable for a
   single-user local tool, not a model to extend without reconsidering if
   this app ever needs to be more robust about it. `_task_row.html` (the
   checklist `<li>`, shared with dashboard/notes/projects' plain task
@@ -275,6 +307,25 @@ data/                    # git-ignored; daybook.db lives here
   just copies the sqlite file to `data/backups/`. Deliberately separate
   from the "export everything" feature: one is a full structured export,
   the other is a raw file copy for disaster recovery.
+- **Motion is one shared system, not per-element.** `--ease`/`--t`/`--t-fast`
+  in `style.css` are the only easing and durations used; one rule lists
+  every interactive element (buttons, cards, nav links, task rows, board
+  cards, inputs) and transitions the same properties on all of them, so
+  hovers feel identical everywhere. Keep new interactive elements in that
+  list rather than giving them their own `transition`. Kept short on
+  purpose (~120-160ms): past ~250ms a hover reads as lag. Only cards that
+  are a link target lift (`.card:has(a.card-title):hover`) — a card that
+  does nothing shouldn't invite a click. Keyboard focus uses
+  `:focus-visible` so a clicked button doesn't keep a ring. Everything sits
+  behind a `prefers-reduced-motion` block that drops the movement but keeps
+  the colour changes.
+- **Flash messages are toasts** (`static/toasts.js`, `.toast-stack` at the
+  end of `base.html`), not a repurposed `.empty-state` div with inline
+  style overrides as before. Two ways in, one appearance: server-side
+  `flash()`es render into the stack on load, and `window.showToast(text)`
+  raises one with no round trip (used by the weekly review save and by the
+  failure paths in `drag-drop.js`/`note-checkboxes.js`, which used to call
+  `alert()`). They self-dismiss after 4s or on click.
 - **Headings use a serif font, body text a sans-serif one** — `--font-serif`
   (Georgia, falling back through a few other system serifs) on every
   `h1`-`h6` via one global rule in `style.css`, `--font-sans` (the original

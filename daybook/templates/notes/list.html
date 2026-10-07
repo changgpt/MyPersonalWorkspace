@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% from "_macros.html" import note_card %}
 {% block title %}Notes — FiloFax{% endblock %}
 {% block content %}
 <div class="page-header">
@@ -7,43 +6,45 @@
   <a class="btn" href="{{ url_for('notes.new_view') }}">+ New note</a>
 </div>
 
-<form class="filter-bar" method="get">
-  <select name="type" onchange="this.form.submit()">
+{# hx-get on the form (rather than onchange="this.form.submit()") swaps
+   just the results and pushes the filtered URL, so filtering doesn't
+   reload the page or lose scroll position -- but the same URL still
+   renders the whole page on a cold load, back/forward, or without JS. #}
+<form class="filter-bar" method="get"
+      hx-get="{{ url_for('notes.list_view') }}"
+      hx-trigger="change"
+      hx-target="#notes-results"
+      hx-swap="outerHTML"
+      hx-push-url="true"
+      hx-indicator="#notes-results">
+  <select name="type">
     <option value="">All types</option>
     {% for nt in note_types %}
       <option value="{{ nt['id'] }}" {{ 'selected' if filters.note_type_id == nt['id'] }}>{{ nt['name'] }}</option>
     {% endfor %}
   </select>
-  <select name="person" onchange="this.form.submit()">
+  <select name="person">
     <option value="">All people</option>
     {% for p in people %}
       <option value="{{ p['id'] }}" {{ 'selected' if filters.person_id == p['id'] }}>{{ p['name'] }}</option>
     {% endfor %}
   </select>
-  <select name="project" onchange="this.form.submit()">
+  <select name="project">
     <option value="">All projects</option>
     {% for proj in projects %}
       <option value="{{ proj['id'] }}" {{ 'selected' if filters.project_id == proj['id'] }}>{{ proj['name'] }}</option>
     {% endfor %}
   </select>
-  <select name="topic" onchange="this.form.submit()">
+  <select name="topic">
     <option value="">All topics</option>
     {% for t in topics %}
       <option value="{{ t['id'] }}" {{ 'selected' if filters.topic_id == t['id'] }}>{{ t['name'] }}</option>
     {% endfor %}
   </select>
-  <input type="date" name="from" value="{{ filters.date_from or '' }}" onchange="this.form.submit()">
-  <input type="date" name="to" value="{{ filters.date_to or '' }}" onchange="this.form.submit()">
+  <input type="date" name="from" value="{{ filters.date_from or '' }}">
+  <input type="date" name="to" value="{{ filters.date_to or '' }}">
   <a class="btn btn-secondary" href="{{ url_for('notes.list_view') }}">Clear</a>
 </form>
 
-{% if notes %}
-<div class="card-grid">
-  {% for note in notes %}
-    {{ note_card(note) }}
-  {% endfor %}
-</div>
-{% else %}
-  <div class="empty-state">No notes match these filters.</div>
-{% endif %}
+{% include "notes/_grid.html" %}
 {% endblock %}

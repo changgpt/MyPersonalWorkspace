@@ -1,0 +1,27 @@
+{# Swapped in on its own when the filters change or an entry is added
+   (see activity.list_view / create_view), so it carries its own id. #}
+<div id="activity-items">
+  {% if items %}
+    {% for item in items %}
+    <div class="card">
+      <span class="tag tag-{{ {'note': 'clay', 'task': 'sage', 'win': 'ochre', 'log_entry': 'slate'}[item.kind] }}">
+        {{ item.kind.replace('_', ' ') }}
+      </span>
+      <div style="margin-top: 8px;">
+        {% if item.kind == 'note' %}
+          <a class="card-title" href="{{ url_for('notes.detail_view', note_id=item.entity_id) }}">{{ item.title }}</a>
+        {% elif item.kind == 'task' %}
+          <a class="card-title" href="{{ url_for('tasks.edit_view', task_id=item.entity_id, next=request.full_path) }}">{{ item.title }}</a>
+        {% elif item.kind == 'win' %}
+          <a class="card-title" href="{{ url_for('wins.detail_view', win_id=item.entity_id) }}">{{ item.title }}</a>
+        {% else %}
+          <a class="card-title" href="{{ url_for('activity.log_entry_edit_view', log_entry_id=item.entity_id) }}">{{ item.title }}</a>
+        {% endif %}
+      </div>
+      <div class="card-meta">{{ item.occurred_at | human_date if item.occurred_at else '' }}</div>
+    </div>
+    {% endfor %}
+  {% else %}
+  <div class="empty-state">Nothing in this range yet.</div>
+  {% endif %}
+</div>

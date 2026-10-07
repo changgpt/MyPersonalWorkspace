@@ -68,6 +68,57 @@
 
 * { box-sizing: border-box; }
 
+/* One shared easing/duration for every interactive transition, so hovers
+   across buttons, cards, nav links and rows feel like the same system
+   rather than each element having its own idea. Short on purpose: ~140ms
+   reads as responsive, past ~250ms a hover starts to feel laggy. */
+:root {
+  --ease: cubic-bezier(0.2, 0, 0.2, 1);
+  --t-fast: 120ms;
+  --t: 160ms;
+}
+
+.btn, .md-toolbar button, .pill-link, .sidebar nav a, .card, .task-row,
+.board-card, .stat-tile, input[type="text"], input[type="date"], select,
+textarea, .rich-editor {
+  transition: background-color var(--t) var(--ease),
+              border-color var(--t) var(--ease),
+              color var(--t) var(--ease),
+              box-shadow var(--t) var(--ease),
+              transform var(--t-fast) var(--ease),
+              opacity var(--t) var(--ease);
+}
+
+/* Keyboard focus gets the accent ring; mouse clicks don't (:focus-visible),
+   so buttons don't keep a ring after being clicked. */
+a:focus-visible, button:focus-visible, input:focus-visible,
+select:focus-visible, textarea:focus-visible, [contenteditable]:focus-visible,
+.rich-editor:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+input[type="text"]:focus, input[type="date"]:focus, select:focus,
+textarea:focus, .rich-editor:focus {
+  border-color: var(--accent);
+  outline-offset: 1px;
+}
+
+/* htmx sets .htmx-request on whatever an hx-indicator points at for the
+   duration of the request, so an in-place update that takes a moment dims
+   rather than looking frozen. */
+.htmx-request { opacity: 0.55; pointer-events: none; }
+
+/* Someone who's asked their OS to reduce motion gets the colour changes
+   but none of the movement. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);
@@ -250,6 +301,13 @@ label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom
   box-shadow: var(--shadow-sm);
 }
 
+/* Only cards that are a link target lift -- a card that does nothing
+   shouldn't invite a click. */
+.card:has(a.card-title):hover {
+  border-color: var(--accent-soft);
+  box-shadow: 0 2px 8px rgba(42, 39, 36, 0.08);
+  transform: translateY(-1px);
+}
 .card a.card-title { font-size: 16px; font-weight: 600; color: var(--text); }
 .card a.card-title:hover { color: var(--accent); text-decoration: none; }
 
@@ -350,6 +408,53 @@ label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom
   margin-top: 2px;
 }
 
+/* Flash messages used to be an .empty-state div with inline style
+   overrides, which looked like a mis-rendered content block. Real toasts:
+   fixed to the corner, slide in, dismissed by toasts.js. */
+.toast-stack {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 340px;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 16px rgba(42, 39, 36, 0.14);
+  font-size: 14px;
+  animation: toast-in var(--t) var(--ease);
+}
+.toast.toast-leaving { opacity: 0; transform: translateY(8px); }
+.toast-success { border-left-color: var(--success); }
+.toast-text { flex: 1; }
+.toast-close {
+  flex: none;
+  padding: 0 2px;
+  border: none;
+  background: none;
+  color: var(--text-faint);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.toast-close:hover { color: var(--text); }
+
 .empty-state {
   color: var(--text-faint);
   padding: 32px;
@@ -444,9 +549,19 @@ mark { background: var(--accent-soft); color: var(--accent-hover); padding: 0 2p
   margin-bottom: 6px;
 }
 
-.task-row input[type="checkbox"] { width: 18px; height: 18px; flex: none; }
+.task-row:hover { border-color: var(--accent-soft); }
+.task-row input[type="checkbox"] { width: 18px; height: 18px; flex: none; cursor: pointer; }
 .task-row .task-title { flex: 1 1 60%; min-width: 0; }
 .task-row.task-done .task-title { text-decoration: line-through; color: var(--text-faint); }
+
+/* Rows and cards that htmx has just swapped in fade up rather than
+   appearing instantly, so an in-place update is visible as a change
+   instead of silently redrawing. */
+@keyframes settle-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.task-row, .board-card { animation: settle-in var(--t) var(--ease); }
 
 .board, .today-board {
   display: grid;
@@ -489,7 +604,16 @@ mark { background: var(--accent-soft); color: var(--accent-hover); padding: 0 2p
   cursor: grab;
 }
 
-.board-card.dragging { opacity: 0.4; }
+.board-card:hover { border-color: var(--accent-soft); box-shadow: 0 2px 8px rgba(42, 39, 36, 0.08); }
+.board-card.dragging, .task-row.dragging { opacity: 0.4; }
+
+/* Drop feedback while dragging: without it there was no way to tell which
+   column would receive the card, or that the drag was being tracked at
+   all (set by drag-drop.js on dragenter/dragover). */
+.board-column-list.drop-active {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
 
 footer.app-footer {
   margin-top: 40px;

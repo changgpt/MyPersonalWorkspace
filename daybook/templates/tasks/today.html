@@ -9,28 +9,19 @@
   </div>
 </div>
 
-<form class="filter-bar" method="post" action="{{ url_for('tasks.quick_add_view') }}">
+{# Posts and swaps the checklists in place, so capturing several tasks in a
+   row doesn't reload the page each time; the input clears and keeps focus
+   so you can keep typing. #}
+<form class="filter-bar" method="post" action="{{ url_for('tasks.quick_add_view') }}"
+      hx-post="{{ url_for('tasks.quick_add_view') }}"
+      hx-target="#today-checklists"
+      hx-swap="outerHTML"
+      hx-on::after-request="this.reset(); this.querySelector('input[name=title]').focus()">
   <input type="text" name="title" placeholder="Quick-add a task for today…" required style="width: 320px;" autofocus>
   <button class="btn" type="submit">Add</button>
 </form>
 
-<div class="today-board">
-  {% for bucket in buckets %}
-  <div class="board-column">
-    <h3>{{ bucket_labels[bucket] }}</h3>
-    <ul class="task-checklist board-column-list" data-drop-zone data-bucket="{{ bucket }}">
-      {% for task in tasks_by_bucket[bucket] %}
-        {% set next_url = request.full_path %}
-        {% set draggable = true %}
-        {% include "tasks/_task_row.html" %}
-      {% endfor %}
-    </ul>
-    {% if not tasks_by_bucket[bucket] %}
-    <div class="empty-state">Nothing here yet.</div>
-    {% endif %}
-  </div>
-  {% endfor %}
-</div>
+{% include "tasks/_checklists.html" %}
 
 <p class="flash-hint">Drag a task between checklists to re-prioritize it.</p>
 <script src="{{ url_for('static', filename='drag-drop.js') }}"></script>

@@ -1,21 +1,28 @@
+from datetime import date
+
 from flask import Blueprint, abort, redirect, render_template, request, url_for
 
-from .. import db
+from .. import db, htmx
 
 bp = Blueprint("activity", __name__, url_prefix="/activity")
 
 
-@bp.route("")
-def list_view():
+def _render_list(template):
     project_id = request.args.get("project", type=int)
     date_from = request.args.get("from") or None
     date_to = request.args.get("to") or None
     return render_template(
-        "activity/list.html",
+        template,
         items=db.list_activity(date_from=date_from, date_to=date_to, project_id=project_id),
         projects=db.list_projects(),
         filters=dict(project_id=project_id, date_from=date_from, date_to=date_to),
+        today=date.today().isoformat(),
     )
+
+
+@bp.route("")
+def list_view():
+    return _render_list(htmx.template_for("activity/list.html", "activity/_items.html"))
 
 
 @bp.route("", methods=["POST"])
@@ -27,6 +34,10 @@ def create_view():
         project_id=form.get("project_id", type=int) or None,
         time_spent=form.get("time_spent") or None,
     )
+    # htmx gets the refreshed list to swap in; a plain form post gets the
+    # redirect it expects.
+    if htmx.is_htmx():
+        return _render_list("activity/_items.html")
     return redirect(url_for("activity.list_view"))
 
 

@@ -38,6 +38,7 @@ daybook/
   config.py           # reads .env, defines DATA_DIR / DATABASE_PATH / SECRET_KEY
   db.py               # all SQL lives here; thin functions, sqlite3.Row results
   schema.sql           # CREATE TABLE/TRIGGER statements, run by `flask init-db`
+                        # and automatically by `python run.py` on every startup
   seed.py              # default note types + their Markdown templates
   markdown_utils.py    # render_markdown(text) -> HTML
   docx_utils.py         # docx_bytes_to_markdown(bytes) -> Markdown
@@ -353,12 +354,11 @@ data/                    # git-ignored; daybook.db lives here
 ```bash
 pip install -r requirements.txt
 cp .env.example .env
-export FLASK_APP=run.py
-flask init-db        # idempotent: creates tables + seeds note types if empty
-python run.py         # http://127.0.0.1:5000
+python run.py         # http://127.0.0.1:5000 -- applies any pending migration on startup
 
 python -m pytest tests/ -v
 
+export FLASK_APP=run.py
 flask backup-db       # copies data/daybook.db to data/backups/daybook-<timestamp>.db
 ```
 

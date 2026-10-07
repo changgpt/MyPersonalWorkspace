@@ -213,6 +213,13 @@ textarea { width: 100%; min-height: 320px; font-family: ui-monospace, SFMono-Reg
   font-weight: normal;
   color: inherit;
 }
+/* note-checkboxes.js un-disables the checkboxes of body lines that have a
+   real task behind them, so those (and only those) look clickable. */
+.note-body li.task-list-item input[type="checkbox"]:not([disabled]) { cursor: pointer; }
+.note-body li.note-task-done {
+  text-decoration: line-through;
+  color: var(--text-faint);
+}
 
 .rich-editor {
   width: 100%;
@@ -352,6 +359,55 @@ label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom
   border-radius: var(--radius);
 }
 
+/* Reading layout for a single note. Notes are the core of the app but
+   were the one surface with no container at all -- body text ran the full
+   920px of .main while lesser things (a task row, a stat tile) sat in
+   cards. Capped at ~68ch here: past roughly 75 characters a line is
+   measurably harder to track back from, and this is the one page meant
+   for reading rather than scanning. */
+.note-article { max-width: 68ch; }
+
+.note-header { margin-bottom: 20px; }
+
+.note-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.note-header-meta .card-meta { margin-top: 0; }
+
+.note-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.note-title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.25;
+}
+
+.note-header-actions { flex: none; white-space: nowrap; }
+
+.note-header-tags { margin-top: 12px; }
+
+/* The note's own text, framed like every other block of content. */
+.note-sheet {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px 32px;
+  box-shadow: var(--shadow-sm);
+}
+.note-sheet > :first-child { margin-top: 0; }
+.note-sheet > :last-child { margin-bottom: 0; }
+
+.note-section { margin-top: 32px; }
+.note-section h3 { margin: 0 0 12px; }
+
 .note-body { margin-top: 16px; }
 
 mark { background: var(--accent-soft); color: var(--accent-hover); padding: 0 2px; border-radius: 3px; }
@@ -371,10 +427,16 @@ mark { background: var(--accent-soft); color: var(--accent-hover); padding: 0 2p
   padding: 0;
 }
 
+/* Wraps rather than squeezing: the same row renders full-width on the
+   dashboard and inside a one-third-width Today column. Without the wrap
+   (and the title's flex-basis + min-width:0), a flex item can't shrink
+   below its longest word, so in a narrow column the title collapsed to
+   one word per line while the priority/due/Edit items kept their space. */
 .task-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 6px 10px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -382,8 +444,8 @@ mark { background: var(--accent-soft); color: var(--accent-hover); padding: 0 2p
   margin-bottom: 6px;
 }
 
-.task-row input[type="checkbox"] { width: 18px; height: 18px; }
-.task-row .task-title { flex: 1; }
+.task-row input[type="checkbox"] { width: 18px; height: 18px; flex: none; }
+.task-row .task-title { flex: 1 1 60%; min-width: 0; }
 .task-row.task-done .task-title { text-decoration: line-through; color: var(--text-faint); }
 
 .board, .today-board {

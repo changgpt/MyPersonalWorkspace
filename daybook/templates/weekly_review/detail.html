@@ -2,14 +2,14 @@
 {% block title %}Weekly review {{ week_str }} — FiloFax{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h2>Week {{ week_str }}</h2>
+  <h2>{{ summary.week_start | human_date_range(summary.week_end) }}</h2>
   <div>
     <a class="btn btn-secondary" href="{{ url_for('weekly_review.detail_view', week_str=prev_week) }}">&larr; Previous</a>
     <a class="btn btn-secondary" href="{{ url_for('weekly_review.detail_view', week_str=next_week) }}">Next &rarr;</a>
     <a class="btn btn-secondary" href="{{ url_for('weekly_review.export_view', week_str=week_str) }}">Export Markdown</a>
   </div>
 </div>
-<p class="card-meta">{{ summary.week_start }} to {{ summary.week_end }}</p>
+<p class="card-meta">Week {{ week_str }}</p>
 
 <div class="card-grid">
   <div class="card">
@@ -29,7 +29,9 @@
   <div class="card">
     <strong>Open or overdue tasks</strong>
     {% if summary.tasks_open_or_overdue %}
-      <ul>{% for t in summary.tasks_open_or_overdue %}<li>{{ t['title'] }} ({{ t['status'] }})</li>{% endfor %}</ul>
+      <ul>{% for t in summary.tasks_open_or_overdue %}
+        <li>{{ t['title'] }}{% if t['due_date'] %} <span class="card-meta">due {{ t['due_date'] | human_date }}</span>{% endif %}</li>
+      {% endfor %}</ul>
     {% else %}<p class="card-meta">Nothing outstanding.</p>{% endif %}
   </div>
 

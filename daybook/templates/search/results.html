@@ -12,7 +12,7 @@
       <div style="margin-top: 8px;">
         <a class="card-title" href="{{ url_for('notes.detail_view', note_id=row['id']) }}">{{ row['title_html'] | safe }}</a>
       </div>
-      <div class="card-meta">{{ row['event_date'] }}</div>
+      <div class="card-meta">{{ row['event_date'] | human_date }}</div>
       <p>{{ row['snippet_html'] | safe }}</p>
     </div>
     {% endfor %}

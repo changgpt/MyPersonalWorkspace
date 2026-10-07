@@ -99,6 +99,21 @@ data/                    # git-ignored; daybook.db lives here
 - **Markdown rendering** happens only at display time (`| markdown` Jinja
   filter in templates); the stored `body_markdown` is always the raw
   Markdown source, never pre-rendered HTML.
+- **Dates are never rendered raw.** Storage is ISO text (`"2026-10-07"`),
+  which reads like a database on screen, so every *displayed* date goes
+  through the `| human_date` Jinja filter (`daybook/date_utils.py`,
+  registered in `__init__.py` beside `markdown`): "Today" / "Yesterday" /
+  "Tomorrow", then "Mon 5 Oct" for the rest of the surrounding week (the
+  date stays on so a bare weekday can't be read as the wrong week), then
+  "5 Oct", and "5 Oct 2025" once the year differs. `| human_date_range`
+  does the weekly review's "This week · 5 - 11 Oct". Both accept an ISO
+  date, an ISO timestamp, a `date` or a `datetime`, and return the input
+  untouched if it won't parse, so a filter can't 500 a page. Two things
+  deliberately stay ISO: an `<input type="date">` value (the browser
+  requires it) and the weekly review's `week_str` identifier, which is
+  shown as faint meta and used in URLs/export filenames. Day-of-month is
+  interpolated (`{d.day}`) rather than `strftime("%-d")`, which is a
+  glibc/macOS extension that raises on Windows.
 - **FTS5 search index** (`note_fts`) is an external-content table kept in
   sync by SQL triggers in `schema.sql` (`note_ai`/`note_ad`/`note_au`) —
   don't write to `note_fts` directly; it follows `note` automatically.
@@ -308,6 +323,42 @@ data/                    # git-ignored; daybook.db lives here
   `#global-search`. Guarded against firing while typing in a field or with
   a modifier key held — don't add a new single-key shortcut without the
   same guard.
+- **Reading a note is its own layout, not a generic page.** Notes are the
+  core of the app but were the one surface with no container: body text ran
+  the full 920px of `.main` while lesser things (a task row, a stat tile)
+  sat in cards. `notes/detail.html` is now an `.note-article` capped at
+  `68ch` (past ~75 characters a line is measurably harder to track back
+  from, and this is the one page meant for reading rather than scanning),
+  with the body in a `.note-sheet` surface card. Don't widen it to match
+  the other pages — the narrowness is the point.
+- **A note's own checkboxes are the live ones** (`static/note-checkboxes.js`).
+  `pymdownx.tasklist` renders `- [ ]` as a *disabled* checkbox, so the note
+  page used to list every action item a second time underneath (as real
+  task rows) purely to have something clickable — the same items twice on
+  one screen. Instead `notes.detail_view` splits `tasks_for_note` using
+  `task_extraction.checkbox_line_texts`: tasks whose `source_line_text`
+  is a checkbox line in the body are passed as a `body_tasks` map (keyed on
+  that text, exactly how `db._sync_note_checkbox` matches server-side) and
+  the script un-disables and wires those checkboxes; everything else
+  (`TODO:` lines, AI-suggested tasks — no checkbox of their own) still gets
+  a row under "Linked tasks". The script posts to `/tasks/<id>/move`, which
+  returns 204 and reuses `db.set_task_status`, so ticking in the note also
+  rewrites `- [ ]` to `- [x]` in the stored Markdown; `/tasks/<id>/toggle`
+  would have returned an HTML row meant for an htmx swap we don't want
+  here. The `body_tasks` attribute is single-quoted in the template on
+  purpose: `tojson` emits double quotes and escapes `'`, so a
+  double-quoted attribute ends at the first key.
+- **`.task-row` wraps rather than squeezing.** The same row renders
+  full-width on the dashboard and inside a one-third-width Today column;
+  a flex item can't shrink below its longest word, so without
+  `flex-wrap: wrap` on the row and `flex: 1 1 60%; min-width: 0` on the
+  title, a narrow column collapsed the title to one word per line while
+  the priority/due/Edit items kept their space. Keep both if you restyle it.
+- **The Dashboard de-duplicates "Today" against "Overdue".** An overdue
+  task in the `today` bucket satisfies both queries and the two lists sit
+  one above the other, so `dashboard.index` filters the overdue ids out of
+  the today list. Overdue wins: more urgent framing, and it's the section
+  further down the page.
 - **The note body editor is WYSIWYG, not a Markdown-source textarea.**
   `templates/notes/form.html` renders a `contenteditable` div
   (`#body_editor`, class `.rich-editor`) pre-filled with

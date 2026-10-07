@@ -46,7 +46,7 @@
         <a class="card-title" href="{{ url_for('activity.log_entry_edit_view', log_entry_id=item.entity_id) }}">{{ item.title }}</a>
       {% endif %}
     </div>
-    <div class="card-meta">{{ item.occurred_at[:10] if item.occurred_at else '' }}</div>
+    <div class="card-meta">{{ item.occurred_at | human_date if item.occurred_at else '' }}</div>
   </div>
   {% endfor %}
 {% else %}

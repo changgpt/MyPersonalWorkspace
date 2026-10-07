@@ -2,7 +2,7 @@ from datetime import date
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
-from .. import ai, db
+from .. import ai, db, task_extraction
 from ..docx_utils import docx_bytes_to_markdown
 from ..tag_utils import tag_names_as_text as _tag_names_as_text
 from ..tag_utils import tag_names_to_ids as _tag_names_to_ids
@@ -86,9 +86,25 @@ def detail_view(note_id):
     if note is None:
         abort(404)
     tags = db.get_note_tags(note_id)
-    linked_tasks = db.tasks_for_note(note_id)
+    # A task extracted from a "- [ ]" line is already on screen as a
+    # checkbox in the rendered body, so listing it again under "Linked
+    # tasks" showed the same item twice. Those checkboxes are made live by
+    # static/note-checkboxes.js (keyed on this map); only tasks with no
+    # checkbox of their own ("TODO:" lines, AI-suggested ones) still need
+    # a row below the note.
+    checkbox_texts = set(task_extraction.checkbox_line_texts(note["body_markdown"]))
+    body_tasks, linked_tasks = {}, []
+    for task in db.tasks_for_note(note_id):
+        if task["source_line_text"] in checkbox_texts:
+            body_tasks[task["source_line_text"]] = {
+                "id": task["id"],
+                "done": task["status"] == "done",
+            }
+        else:
+            linked_tasks.append(task)
     return render_template(
         "notes/detail.html", note=note, tags=tags, linked_tasks=linked_tasks,
+        body_tasks=body_tasks,
         evidence=db.evidence_for_entity("note", note_id),
         all_skills=db.list_skills(),
         entity_type="note", entity_id=note_id,

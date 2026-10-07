@@ -2,59 +2,70 @@
 {% from "_macros.html" import person_pill, project_pill, topic_pill %}
 {% block title %}{{ note['title'] }} — FiloFax{% endblock %}
 {% block content %}
-<div class="page-header">
-  <div>
-    <span class="tag tag-{{ note['type_color'] }}">{{ note['type_name'] }}</span>
-    <h2 style="display:inline; margin-left: 8px;">{{ note['title'] }}</h2>
-    <div class="card-meta">{{ note['event_date'] }}</div>
+<article class="note-article">
+  <header class="note-header">
+    <div class="note-header-meta">
+      <span class="tag tag-{{ note['type_color'] }}">{{ note['type_name'] }}</span>
+      <span class="card-meta">{{ note['event_date'] | human_date }}</span>
+    </div>
+    <div class="note-header-row">
+      <h2 class="note-title">{{ note['title'] }}</h2>
+      <div class="note-header-actions">
+        <a class="btn btn-secondary" href="{{ url_for('notes.edit_view', note_id=note['id']) }}">Edit</a>
+        <form method="post" action="{{ url_for('notes.delete_view', note_id=note['id']) }}" style="display:inline"
+              onsubmit="return confirm('Delete this note? This cannot be undone.')">
+          <button class="btn btn-danger" type="submit">Delete</button>
+        </form>
+      </div>
+    </div>
+    {% if tags.people or tags.projects or tags.topics %}
+    <div class="note-header-tags">
+      {% for p in tags.people %}{{ person_pill(p) }}{% endfor %}
+      {% for p in tags.projects %}{{ project_pill(p) }}{% endfor %}
+      {% for t in tags.topics %}{{ topic_pill(t) }}{% endfor %}
+    </div>
+    {% endif %}
+  </header>
+
+  {% if note['ai_summary'] %}
+  <div class="card" style="border-color: var(--accent-soft);">
+    <strong>AI summary</strong>
+    <p>{{ note['ai_summary'] }}</p>
   </div>
-  <div>
-    <a class="btn btn-secondary" href="{{ url_for('notes.edit_view', note_id=note['id']) }}">Edit</a>
-    <form method="post" action="{{ url_for('notes.delete_view', note_id=note['id']) }}" style="display:inline"
-          onsubmit="return confirm('Delete this note? This cannot be undone.')">
-      <button class="btn btn-danger" type="submit">Delete</button>
-    </form>
+  {% endif %}
+
+  {# Single-quoted on purpose: tojson emits double quotes (and escapes "'"
+     to '), so a double-quoted attribute would end at the first key. #}
+  <div class="note-body note-sheet" data-note-tasks='{{ body_tasks | tojson }}'>
+    {{ note['body_markdown'] | markdown | safe }}
   </div>
-</div>
 
-{% if tags.people or tags.projects or tags.topics %}
-<div style="margin-bottom: 16px;">
-  {% for p in tags.people %}{{ person_pill(p) }}{% endfor %}
-  {% for p in tags.projects %}{{ project_pill(p) }}{% endfor %}
-  {% for t in tags.topics %}{{ topic_pill(t) }}{% endfor %}
-</div>
-{% endif %}
+  {% if linked_tasks %}
+  <section class="note-section">
+    <h3>Linked tasks</h3>
+    <ul class="task-checklist">
+      {% for task in linked_tasks %}
+        {% include "tasks/_task_row.html" %}
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
 
-{% if ai_enabled %}
-<div class="filter-bar">
-  <form method="post" action="{{ url_for('notes.ai_summarize_view', note_id=note['id']) }}">
-    <button class="btn btn-secondary" type="submit">Summarize with AI</button>
-  </form>
-  <a class="btn btn-secondary" href="{{ url_for('notes.ai_suggest_tasks_view', note_id=note['id']) }}">Suggest tasks with AI</a>
-  <span class="flash-hint">Sends this note's text to the Anthropic API.</span>
-</div>
-{% endif %}
+  <section class="note-section">
+    <h3>Skills</h3>
+    {% include "skills/_tagger.html" %}
+  </section>
 
-{% if note['ai_summary'] %}
-<div class="card" style="border-color: var(--accent-soft);">
-  <strong>AI summary</strong>
-  <p>{{ note['ai_summary'] }}</p>
-</div>
-{% endif %}
-
-<div class="note-body">
-  {{ note['body_markdown'] | markdown | safe }}
-</div>
-
-{% if linked_tasks %}
-<h3>Linked tasks</h3>
-<ul class="task-checklist">
-  {% for task in linked_tasks %}
-    {% include "tasks/_task_row.html" %}
-  {% endfor %}
-</ul>
-{% endif %}
-
-<h3>Skills</h3>
-{% include "skills/_tagger.html" %}
+  {% if ai_enabled %}
+  <section class="note-section">
+    <div class="filter-bar">
+      <form method="post" action="{{ url_for('notes.ai_summarize_view', note_id=note['id']) }}">
+        <button class="btn btn-secondary" type="submit">Summarize with AI</button>
+      </form>
+      <a class="btn btn-secondary" href="{{ url_for('notes.ai_suggest_tasks_view', note_id=note['id']) }}">Suggest tasks with AI</a>
+      <span class="flash-hint">Sends this note's text to the Anthropic API.</span>
+    </div>
+  </section>
+  {% endif %}
+</article>
 {% endblock %}

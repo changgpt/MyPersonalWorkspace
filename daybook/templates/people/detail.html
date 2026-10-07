@@ -14,7 +14,7 @@
   </p>
   {% endif %}
   {% if person['how_met'] %}<p><strong>How you met:</strong> {{ person['how_met'] }}</p>{% endif %}
-  {% if person['last_contacted_date'] %}<p><strong>Last contacted:</strong> {{ person['last_contacted_date'] }}</p>{% endif %}
+  {% if person['last_contacted_date'] %}<p><strong>Last contacted:</strong> {{ person['last_contacted_date'] | human_date }}</p>{% endif %}
   {% if person['notes'] %}<p><strong>Useful context:</strong> {{ person['notes'] }}</p>{% endif %}
   {% if person['follow_up'] %}<p><strong>Follow up:</strong> {{ person['follow_up'] }}</p>{% endif %}
   {% if not (person['role'] or person['team'] or person['how_met'] or person['last_contacted_date'] or person['notes'] or person['follow_up']) %}

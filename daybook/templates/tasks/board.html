@@ -36,7 +36,7 @@
       <div class="board-card" draggable="true" data-task-id="{{ task['id'] }}">
         <div>{{ task['title'] }}</div>
         <span class="tag tag-{{ {'low': 'sage', 'medium': 'ochre', 'high': 'rose'}[task['priority']] }}">{{ task['priority'] }}</span>
-        {% if task['due_date'] %}<div class="card-meta">due {{ task['due_date'] }}</div>{% endif %}
+        {% if task['due_date'] %}<div class="card-meta">due {{ task['due_date'] | human_date }}</div>{% endif %}
         <a class="pill-link" href="{{ url_for('tasks.edit_view', task_id=task['id'], next=request.full_path) }}">Edit</a>
       </div>
       {% endfor %}

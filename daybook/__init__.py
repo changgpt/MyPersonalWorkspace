@@ -1,6 +1,7 @@
 from flask import Flask
 
 from . import config, db
+from .date_utils import human_date, human_date_range
 from .markdown_utils import render_markdown
 
 
@@ -13,6 +14,9 @@ def create_app():
     @app.template_filter("markdown")
     def markdown_filter(text):
         return render_markdown(text)
+
+    app.add_template_filter(human_date, "human_date")
+    app.add_template_filter(human_date_range, "human_date_range")
 
     from .blueprints import (
         activity, dashboard, notes, people, projects, skills, tasks, topics,

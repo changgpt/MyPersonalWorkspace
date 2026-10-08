@@ -76,6 +76,27 @@
   --ease: cubic-bezier(0.2, 0, 0.2, 1);
   --t-fast: 120ms;
   --t: 160ms;
+
+  /* The content measure, and the third iteration of it -- read the whole
+     comment before changing it, because the two obvious answers are both
+     wrong and have both already been tried:
+       1. A fixed `max-width: 920px` made full-screening the window do
+          nothing at all, which felt broken.
+       2. Removing the cap entirely (width: 100%) ran every card to the
+          screen edge, which reads as untidy and oversized.
+     A *viewport-relative* width with a pixel floor satisfies both: it
+     grows with the window, so a bigger screen genuinely shows more, and
+     it always leaves gutters, so nothing touches the edge. The floor
+     stops it collapsing on a small laptop, where filling the width is
+     the right answer. These two numbers are the knob -- tune them here
+     rather than adding max-widths to individual pages. */
+  --content-width: 66vw;
+  --content-min: 760px;
+
+  /* Base UI type. Left at the browser's 16px default originally, which
+     made the whole app read a size larger than it should next to its own
+     13-14px meta text. */
+  --ui-size: 15px;
 }
 
 .btn, .md-toolbar button, .pill-link, .sidebar nav a, .card, .task-row,
@@ -125,6 +146,7 @@ textarea:focus, .rich-editor:focus {
 body {
   margin: 0;
   font-family: var(--font-sans);
+  font-size: var(--ui-size);
   background: var(--bg);
   color: var(--text);
   line-height: 1.5;
@@ -167,23 +189,27 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
 .sidebar nav a:hover { background: var(--surface-sunken); text-decoration: none; color: var(--text); }
 .sidebar nav a.active { background: var(--accent-soft); color: var(--accent-hover); font-weight: 600; }
 
-/* Fills the window rather than sitting in a fixed 920px column, which made
-   full-screening the browser do nothing. Deliberately uncapped: every grid
-   here is `auto-fill`, so extra width becomes more columns rather than
-   stretched ones, and the one surface where line length actually matters
-   (.note-article) carries its own measure. min-width: 0 keeps a wide grid
-   child from forcing the flex row wider than the viewport. */
+/* .main still takes the whole window; the measure lives on .main-inner so
+   the gutters are page background rather than a narrower column of
+   surface. min-width: 0 keeps a wide grid child from forcing the flex row
+   wider than the viewport. */
 .main {
   flex: 1;
   min-width: 0;
-  padding: 32px 40px;
+  padding: 28px 36px;
 }
 
-.main-inner { width: 100%; }
+/* Centred, and sized by --content-width (see :root) -- never `width: 100%`
+   again, which is what put every card against the screen edge. */
+.main-inner {
+  width: min(100%, max(var(--content-min), var(--content-width)));
+  margin-inline: auto;
+}
 
-/* A little more breathing room once there's room to spare. */
+/* A little more breathing room once there's room to spare. The gutters
+   themselves already grow with --content-width; this is just padding. */
 @media (min-width: 1600px) {
-  .main { padding: 40px 56px; }
+  .main { padding: 36px 48px; }
 }
 
 .page-header {
@@ -193,7 +219,7 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   margin-bottom: 24px;
 }
 
-.page-header h2 { margin: 0; font-size: 22px; }
+.page-header h2 { margin: 0; font-size: 19px; }
 
 .search-form { margin-bottom: 24px; }
 /* Wide enough not to look stranded now the page is fluid, but capped --
@@ -589,7 +615,7 @@ label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom
   box-shadow: 0 2px 8px rgba(42, 39, 36, 0.08);
   transform: translateY(-1px);
 }
-.card a.card-title { font-size: 16px; font-weight: 600; color: var(--text); }
+.card a.card-title { font-size: 15px; font-weight: 600; color: var(--text); }
 .card a.card-title:hover { color: var(--accent); text-decoration: none; }
 
 .card-meta { color: var(--text-faint); font-size: 13px; margin-top: 4px; }
@@ -643,12 +669,12 @@ label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom
 
 .greeting-banner {
   text-align: center;
-  margin: 8px 0 28px;
+  margin: 4px 0 24px;
 }
 
 .greeting-text {
-  margin: 0 0 8px;
-  font-size: 30px;
+  margin: 0 0 6px;
+  font-size: 25px;
   color: var(--accent-hover);
 }
 
@@ -666,8 +692,8 @@ label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom
 
 .stat-tile-row {
   display: flex;
-  gap: 16px;
-  margin-bottom: 28px;
+  gap: 14px;
+  margin-bottom: 24px;
 }
 
 .stat-tile {
@@ -675,13 +701,13 @@ label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 16px 20px;
+  padding: 13px 18px;
   text-align: center;
 }
 
 .stat-tile-value {
   font-family: var(--font-serif);
-  font-size: 28px;
+  font-size: 23px;
   color: var(--accent-hover);
 }
 
@@ -991,7 +1017,7 @@ footer.app-footer {
 .coming-up-day {
   display: flex;
   gap: 20px;
-  padding: 14px 0;
+  padding: 11px 0;
   border-top: 1px solid var(--border);
 }
 .coming-up-day:first-child { border-top: none; padding-top: 0; }
@@ -1024,7 +1050,7 @@ footer.app-footer {
   background: var(--accent);
 }
 
-.coming-up-events { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.coming-up-events { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .coming-up-event { padding-left: 12px; border-left: 2px solid var(--accent-soft); }
 /* A tentative hold is less certain than an accepted meeting, so its bar
    is dashed rather than solid -- same information, no extra colour. */

@@ -357,19 +357,54 @@ data/                    # git-ignored; daybook.db lives here
   just copies the sqlite file to `data/backups/`. Deliberately separate
   from the "export everything" feature: one is a full structured export,
   the other is a raw file copy for disaster recovery.
-- **The layout is fluid — don't put the content back in a fixed column.**
-  `.main` fills the window with no max-width (it used to cap at 920px,
-  which made full-screening the browser do nothing). That works because
-  every grid is `auto-fill`, so extra width becomes *more columns* rather
-  than stretched ones, and the single surface where line length matters
-  (`.note-article`) carries its own `68ch` measure. `.main` needs
-  `min-width: 0` or a wide grid child forces the flex row past the
-  viewport. Task/board columns drop from 3-4 to 2 below 1200px — well
-  before the layout breaks — because a task title needs real width to be
-  readable. Form fields fill their column
-  (`form:not(.filter-bar):not(.search-form) > input`, `.form-row` children);
-  filter bars and the search box are excluded, since their controls are
-  meant to sit inline at their natural size.
+- **The content measure is viewport-*relative*, centred, and has been got
+  wrong twice — read this before changing it.** Both obvious answers are
+  wrong, and both have already shipped and been rejected by the user:
+  1. A fixed `max-width: 920px` on `.main`. Full-screening the browser
+     then did nothing at all ("it does not adjust to my screen which
+     makes it feel weird").
+  2. Removing the cap entirely (`.main-inner { width: 100% }`). Every
+     card then ran to the screen edge, which read as untidy and
+     oversized ("all the boxes are stretched to the end of the screen").
+  The answer is neither: `--content-width: 66vw` with a
+  `--content-min: 760px` floor, applied as
+  `.main-inner { width: min(100%, max(var(--content-min), var(--content-width))); margin-inline: auto; }`.
+  Being a *percentage of the viewport* is what satisfies both complaints
+  at once — the column genuinely grows when the window does (1352px → 892,
+  1920px → 1267, 2560px → 1690) and it always leaves gutters, so nothing
+  touches the edge. The floor means a small laptop still fills its width,
+  which is correct there. **Tune the two custom properties in `:root`**
+  rather than adding a `max-width` to any individual page; a per-page cap
+  is how this drifts back to problem 1.
+  - `.main` itself still spans the window, so the gutters are page
+    background rather than a narrower slab of surface colour, and
+    `.main-inner` is centred *within the content area* (i.e. to the right
+    of the sidebar), not within the whole window.
+  - `.main` needs `min-width: 0` or a wide grid child forces the flex row
+    past the viewport.
+  - Grids stay `auto-fill`, so extra width still becomes *more columns*
+    rather than stretched ones; the board keeps four comfortable columns
+    at the narrower measure. Task/board columns drop from 3-4 to 2 below
+    1200px — well before the layout breaks — because a task title needs
+    real width to be readable.
+  - `.note-article` keeps its own `68ch` measure, which is *narrower*
+    than `--content-width` and stays that way (see the note-reading
+    bullet below).
+  - Form fields fill their column
+    (`form:not(.filter-bar):not(.search-form) > input`, `.form-row`
+    children); filter bars and the search box are excluded, since their
+    controls are meant to sit inline at their natural size.
+  - Overflow is checked by driving every page in a browser and asserting
+    nothing in `.main-inner` extends past the viewport; do that again if
+    you change the measure.
+- **Base UI type is `--ui-size` (15px), set on `body`.** It was left at
+  the browser's 16px default originally, which made the whole app read a
+  size larger than it should next to its own 13-14px meta text ("everything
+  is a bit big"). The dashboard's loudest items were scaled with it
+  (greeting 30→25px, stat tile value 28→23px, `.page-header h2` 22→19px).
+  This is a *global UI* knob and is unrelated to `--note-size`, which is
+  the reader-controlled A−/A+ size for note bodies only — don't conflate
+  them or the A−/A+ buttons will appear to resize the chrome.
 - **Dropdowns are a custom control** (`static/select.js` + the `.select-*`
   rules), because a native `<select>` can't be restyled (its popup is drawn
   by the OS, so border-radius, our colours and the dark theme never reach

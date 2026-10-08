@@ -59,8 +59,6 @@ def test_weekly_review_summary_scopes_to_current_week(db):
     db_module.add_skill_evidence("Public speaking", "task", done_task_id)
 
     today = date.today().isoformat()
-    db_module.create_win(win_date=today, title="This week's win")
-    db_module.create_win(win_date="2000-01-01", title="Ancient win")
 
     summary = db_module.weekly_review_summary(week_str)
 
@@ -68,4 +66,6 @@ def test_weekly_review_summary_scopes_to_current_week(db):
     assert [t["title"] for t in summary["tasks_completed"]] == ["Finish thing"]
     assert any(t["title"] == "Still open" for t in summary["tasks_open_or_overdue"])
     assert {s["name"] for s in summary["skills_touched"]} == {"Public speaking"}
-    assert [w["title"] for w in summary["wins"]] == ["This week's win"]
+    # Wins were removed from the UI, so the summary no longer carries
+    # them -- a section you can't add to is dead weight.
+    assert "wins" not in summary

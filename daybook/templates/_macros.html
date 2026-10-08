@@ -1,7 +1,11 @@
-{% macro note_card(note) %}
+{# show_type=false inside a type-grouped list, where the group heading
+   already names the type -- repeating it on every card was pure noise. #}
+{% macro note_card(note, show_type=true) %}
 <div class="card">
+  {% if show_type %}
   <span class="tag tag-{{ note['type_color'] }}">{{ note['type_name'] }}</span>
-  <div style="margin-top: 8px;">
+  {% endif %}
+  <div{% if show_type %} style="margin-top: 8px;"{% endif %}>
     <a class="card-title" href="{{ url_for('notes.detail_view', note_id=note['id']) }}">{{ note['title'] }}</a>
   </div>
   <div class="card-meta">{{ note['event_date'] | human_date }}</div>

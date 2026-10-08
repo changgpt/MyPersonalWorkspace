@@ -1,5 +1,8 @@
 """Every detail page offers a way back to its own list page.
 
+Wins and the activity log were removed from the UI, so the five remaining
+detail pages are the whole set.
+
 Detail pages are reachable from several directions (a note from Notes, the
 dashboard, a person, search...), so the back link points at the parent list
 rather than the referrer -- these tests pin which list each page points at.
@@ -22,7 +25,6 @@ def _detail_urls():
         # Topics' list page is called "Knowledge Bank" in the nav, so the
         # back link says that rather than the route name.
         (f"/topics/{db_module.find_or_create_topic('Risk')}", "/topics", "Knowledge Bank"),
-        (f"/wins/{db_module.create_win('2026-10-07', 'Shipped the model')}", "/wins", "Wins"),
         (f"/skills/{db_module.create_skill('Python')}", "/skills", "Skills"),
     ]
 

@@ -60,18 +60,6 @@ def test_quick_add_redirects_without_htmx_but_swaps_checklists_with_it(client, d
     assert {t["title"] for t in db_module.list_tasks()} == {"Typed with no JS", "Typed with htmx"}
 
 
-def test_activity_create_redirects_without_htmx_but_swaps_items_with_it(client, db):
-    plain = client.post("/activity", data={"entry_date": "2026-01-01", "description": "No JS"})
-    assert plain.status_code == 302
-
-    swapped = client.post(
-        "/activity", data={"entry_date": "2026-01-01", "description": "With htmx"}, headers=HX,
-    )
-    assert swapped.status_code == 200
-    body = swapped.get_data(as_text=True)
-    assert 'id="activity-items"' in body
-    assert "With htmx" in body
-
 
 def test_weekly_review_save_returns_204_for_htmx_and_redirects_otherwise(client, db):
     data = {"went_well": "Shipped it", "to_improve": "", "focus_next_week": ""}

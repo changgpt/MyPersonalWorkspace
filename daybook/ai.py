@@ -84,7 +84,6 @@ def _summary_digest(summary):
         "Tasks completed: " + join(summary["tasks_completed"], "title"),
         "Tasks still open or overdue: " + join(summary["tasks_open_or_overdue"], "title"),
         "Skills touched: " + join(summary["skills_touched"], "name"),
-        "Wins: " + join(summary["wins"], "title"),
     ])
 
 

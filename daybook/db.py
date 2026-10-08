@@ -308,8 +308,20 @@ def get_note_tags(note_id):
     return {"people": people, "projects": projects, "topics": topics}
 
 
+# The two orderings the Notes list offers. Kept as an explicit map rather
+# than interpolating a user-supplied column, since this goes straight into
+# the SQL: an unknown sort falls back to "type" rather than erroring.
+_NOTE_SORTS = {
+    # Grouped reading order: type, then newest within each type. The type
+    # *name* rather than the id, so the groups come out alphabetical on
+    # screen instead of in whatever order the types were created.
+    "type": "note_type.name ASC, note.event_date DESC, note.id DESC",
+    "date": "note.event_date DESC, note.id DESC",
+}
+
+
 def list_notes(note_type_id=None, person_id=None, project_id=None,
-                topic_id=None, date_from=None, date_to=None):
+                topic_id=None, date_from=None, date_to=None, sort="type"):
     db = get_db()
     query = """
         SELECT DISTINCT note.*, note_type.name AS type_name, note_type.color AS type_color
@@ -339,7 +351,7 @@ def list_notes(note_type_id=None, person_id=None, project_id=None,
     if date_to:
         query += " AND note.event_date <= ?"
         params.append(date_to)
-    query += " ORDER BY note.event_date DESC, note.id DESC"
+    query += " ORDER BY " + _NOTE_SORTS.get(sort, _NOTE_SORTS["type"])
     return db.execute(query, params).fetchall()
 
 
@@ -996,11 +1008,6 @@ def weekly_review_summary(week_str):
         f"ORDER BY {_PRIORITY_RANK_SQL}, due_date IS NULL, due_date"
     ).fetchall()
 
-    wins = db.execute(
-        "SELECT * FROM win WHERE win_date BETWEEN ? AND ? ORDER BY win_date",
-        (date_from, date_to),
-    ).fetchall()
-
     return dict(
         week_start=monday,
         week_end=sunday,
@@ -1008,7 +1015,6 @@ def weekly_review_summary(week_str):
         tasks_completed=tasks_completed,
         tasks_open_or_overdue=tasks_open_or_overdue,
         skills_touched=skills_touched_between(date_from, date_to),
-        wins=wins,
     )
 
 

@@ -41,13 +41,6 @@
       <ul>{% for s in summary.skills_touched %}<li>{{ s['name'] }}</li>{% endfor %}</ul>
     {% else %}<p class="card-meta">None this week.</p>{% endif %}
   </div>
-
-  <div class="card">
-    <strong>Wins</strong>
-    {% if summary.wins %}
-      <ul>{% for w in summary.wins %}<li>{{ w['title'] }}</li>{% endfor %}</ul>
-    {% else %}<p class="card-meta">None this week.</p>{% endif %}
-  </div>
 </div>
 
 <h3>Reflection</h3>

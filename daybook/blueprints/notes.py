@@ -30,16 +30,38 @@ def list_view():
         date_from=request.args.get("from") or None,
         date_to=request.args.get("to") or None,
     )
-    notes = db.list_notes(**filters)
+    # Type-grouped by default: a flat reverse-chronological wall of cards
+    # has no structure to scan, whereas "all the 1:1s, then all the
+    # meetings" does. Newest-first is still one click away.
+    sort = request.args.get("sort") or "type"
+    notes = db.list_notes(sort=sort, **filters)
     return render_template(
         htmx.template_for("notes/list.html", "notes/_grid.html"),
         notes=notes,
+        note_groups=_group_by_type(notes) if sort == "type" else None,
         note_types=db.list_note_types(),
         people=db.list_people(),
         projects=db.list_projects(),
         topics=db.list_topics(),
         filters=filters,
+        sort=sort,
     )
+
+
+def _group_by_type(notes):
+    """Notes as `[(type_name, type_color, [note, ...]), ...]`.
+
+    Grouped in Python off an already type-ordered query rather than with a
+    GROUP BY: the template needs the whole row for each card anyway, so one
+    pass over the result set is simpler than a second query per type (the
+    same reasoning as `db.list_activity`'s Python-side merge).
+    """
+    groups = []
+    for note in notes:
+        if not groups or groups[-1][0] != note["type_name"]:
+            groups.append((note["type_name"], note["type_color"], []))
+        groups[-1][2].append(note)
+    return groups
 
 
 @bp.route("/new")

@@ -5,7 +5,7 @@ Project conventions and layout for FiloFax. Read this before making changes.
 ## What this is
 
 A local-only Flask app (see `daybook_spec.md`-style brief from the user) for
-managing notes, tasks, activity, skills, wins, and weekly reviews at work.
+managing notes, tasks, people, skills and weekly reviews at work.
 Single user, runs on `127.0.0.1`, SQLite file in `data/` (git-ignored).
 
 ## Stack and why
@@ -51,7 +51,7 @@ daybook/
   date_utils.py         # human_date / human_date_range Jinja filters
   docx_utils.py         # docx_bytes_to_markdown(bytes) -> Markdown
   task_extraction.py    # action-item + checkbox-line parsing of a note body
-  tag_utils.py           # shared comma-separated-tag-field parsing (notes + wins)
+  tag_utils.py           # shared comma-separated-tag-field parsing (note tags)
   greetings.py           # Dashboard greeting + motivational quote
   internship.py          # Dashboard "Week N" + days-left countdown
   calendar_sources.py    # Outlook: COM + Graph sources (the only I/O here)
@@ -69,7 +69,7 @@ daybook/
   static/search.js          # search typeahead: dismissal + arrow keys
   blueprints/           # one file per feature area (notes, people, projects,
                         # tasks, topics, search, settings, dashboard, skills,
-                        # wins, activity, weekly_review)
+                        # calendar, weekly_review)
   templates/            # Jinja templates, mirroring the blueprints;
                         # _name.html partials are htmx swap targets the
                         # full page also includes
@@ -106,15 +106,32 @@ data/                    # git-ignored; daybook.db lives here
   and dependency-free. Known limitation: the browser's datalist suggests
   whole-field matches, not per-comma-segment, so autocomplete only helps
   while typing the first tag in the field.
-- **The Notes list auto-applies its filters.** Each `<select>`/date input in
-  `notes/list.html`'s filter bar has `onchange="this.form.submit()"` — no
-  separate "Filter" button, since a GET form already re-renders correctly
-  from the query string on every change; "Clear" stays as a plain link back
-  to the unfiltered URL. Notes render in a `.card-grid` (the same
-  auto-fill grid People/Projects use), not stacked full-width — if a future
-  list page's filter bar feels clunky for the same reason (an explicit
-  submit button before anything happens), prefer this pattern over adding
-  htmx for it.
+- **The Notes list groups by note type by default, and auto-applies its
+  filters.** The filter bar has no "Filter" button — a GET form already
+  re-renders correctly from the query string on every change (it now does
+  that through htmx, see the in-place-updates bullet below); "Clear" stays
+  a plain link back to the unfiltered URL. Notes render in a `.card-grid`
+  (the same auto-fill grid People/Projects use), not stacked full-width.
+  - Ordering is a `sort` query param, resolved through
+    `db._NOTE_SORTS` — an explicit `{name: order-by}` map, because the
+    value goes straight into the SQL and an unknown one must fall back to
+    the default rather than be interpolated or raise.
+    `"type"` (default) is `note_type.name ASC, event_date DESC`; `"date"`
+    is the old plain reverse-chronological order, still one click away in
+    the bar.
+  - `notes._group_by_type` turns the type-ordered rows into
+    `[(type_name, type_color, [note, ...])]` in **one pass in Python**, not
+    a GROUP BY — the template needs the whole row for each card anyway
+    (same reasoning as `db.list_activity`'s Python-side merge). It relies
+    on the query already being type-ordered, so don't change one without
+    the other.
+  - `notes/_grid.html` is **one partial with two shapes**: grouped
+    sections under a coloured type heading, or a single flat grid when
+    sorting by date. The flat case is deliberately *not* a degenerate
+    group of one — a lone "All notes" heading above one grid is noise.
+  - Inside a group the cards pass `note_card(note, show_type=false)`: the
+    heading already names the type, and repeating the tag on every card
+    was the noisiest thing on the page.
 - **Markdown rendering** happens only at display time (`| markdown` Jinja
   filter in templates); the stored `body_markdown` is always the raw
   Markdown source, never pre-rendered HTML.
@@ -165,7 +182,7 @@ data/                    # git-ignored; daybook.db lives here
     results" link silently loses the Back target.
 - **Every detail page has a back link to its own list page**, via the
   `back_link(href, label)` macro in `_macros.html` (`.back-link` in
-  `style.css`). Used on notes/people/projects/topics/wins/skills detail
+  `style.css`). Used on notes/people/projects/topics/skills detail
   pages. It points at the *parent list*, not at the previous page: a note
   is reachable from Notes, the Dashboard, a person, a project or search, so
   "where you came from" would have to be threaded through every link (the
@@ -174,7 +191,7 @@ data/                    # git-ignored; daybook.db lives here
   list is always a correct answer. The label is the page's *nav* name, so
   Topics' says "Knowledge Bank". Form pages deliberately don't use it --
   they already have a Cancel button, which is the same escape hatch with a
-  clearer meaning mid-edit. `tests/test_back_links.py` pins all six.
+  clearer meaning mid-edit. `tests/test_back_links.py` pins all five.
 - **Note type colors** are a fixed palette (`clay`, `sage`, `ochre`,
   `dustyblue`, `plum`, `slate`, `moss`, `rose`), each with a CSS class in
   `style.css` (`.tag-<color>`). Add new colors there before using them in
@@ -316,11 +333,27 @@ data/                    # git-ignored; daybook.db lives here
   notes/tasks" is implemented as a single optional `source_task_id`, set by
   the "Mark as win" link on a completed task — not an open-ended
   many-to-many note/task picker.
-- **Activity log is a Python-side merge**, not a SQL UNION: `db.list_activity`
-  runs one small query per source (notes created, tasks completed, wins,
-  manual log entries) and sorts the combined list in Python. The four
-  sources don't share a schema, so this reads far more clearly than SQL
-  that reconciles mismatched columns.
+- **The Activity Log and Wins pages were removed** (user's call: "get rid
+  of activity log, irrelevant. i think wins can also be gotten rid off").
+  **Only the UI went** — the `win`, `win_person` and `log_entry` tables,
+  their `db.py` functions, and their place in `db.export_all_data` are all
+  untouched, so nothing already recorded is lost and the pages could come
+  back. Deleting the tables would have been irreversible for the sake of a
+  nav tidy-up, which isn't a trade worth making silently. What that costs:
+  - `tests/test_removed_sections.py` pins both halves — the routes 404,
+    and the rows still come out of the export.
+  - Skill evidence can still point at a `win`/`log_entry` (older rows do),
+    so `skills/detail.html` renders those as **plain text** rather than a
+    link; don't delete the `{% else %}` branch thinking it's dead.
+  - The weekly review's summary and its Markdown export no longer include
+    a Wins section, and `ai._summary_digest` no longer sends one. A section
+    you can't add to is dead weight.
+  - `db.list_activity` is now unused by any route. It is kept as the
+    reference for the one convention worth remembering from it: **merging
+    heterogeneous sources happens in Python, not a SQL UNION** — one small
+    query per source, sorted in Python, because the sources don't share a
+    schema and SQL reconciling mismatched columns reads far worse.
+    `notes._group_by_type` follows the same reasoning.
 - **Weekly review** keys off an ISO week string like `"2026-W41"`
   (`db.current_week_str`/`week_str_to_monday`/`adjacent_week_str`). Its
   auto-summary is computed on the fly from existing tables, not stored —
@@ -351,7 +384,8 @@ data/                    # git-ignored; daybook.db lives here
 - **Export (`GET /settings/export`)** builds a zip in memory
   (`io.BytesIO` + `zipfile`, no temp files) from `db.export_all_data()` —
   one `data.json` plus one Markdown file per note. Notes/wins in the
-  export have their tag names resolved inline (not just join-table ids),
+  export have their tag names resolved inline (wins no longer have a UI,
+  but their rows and this resolution are deliberately still exported) (not just join-table ids),
   since that's what's actually useful outside the app.
 - **Backup is a CLI command** (`flask backup-db`), not a web route — it
   just copies the sqlite file to `data/backups/`. Deliberately separate
@@ -366,12 +400,12 @@ data/                    # git-ignored; daybook.db lives here
   2. Removing the cap entirely (`.main-inner { width: 100% }`). Every
      card then ran to the screen edge, which read as untidy and
      oversized ("all the boxes are stretched to the end of the screen").
-  The answer is neither: `--content-width: 66vw` with a
-  `--content-min: 760px` floor, applied as
+  The answer is neither: `--content-width: 61vw` with a
+  `--content-min: 720px` floor, applied as
   `.main-inner { width: min(100%, max(var(--content-min), var(--content-width))); margin-inline: auto; }`.
   Being a *percentage of the viewport* is what satisfies both complaints
-  at once — the column genuinely grows when the window does (1352px → 892,
-  1920px → 1267, 2560px → 1690) and it always leaves gutters, so nothing
+  at once — the column genuinely grows when the window does (1352px → 825,
+  1920px → 1171, 2560px → 1562) and it always leaves gutters, so nothing
   touches the edge. The floor means a small laptop still fills its width,
   which is correct there. **Tune the two custom properties in `:root`**
   rather than adding a `max-width` to any individual page; a per-page cap
@@ -397,11 +431,16 @@ data/                    # git-ignored; daybook.db lives here
   - Overflow is checked by driving every page in a browser and asserting
     nothing in `.main-inner` extends past the viewport; do that again if
     you change the measure.
-- **Base UI type is `--ui-size` (15px), set on `body`.** It was left at
+- **Base UI type is `--ui-size` (14px), set on `body`.** It was left at
   the browser's 16px default originally, which made the whole app read a
   size larger than it should next to its own 13-14px meta text ("everything
   is a bit big"). The dashboard's loudest items were scaled with it
-  (greeting 30→25px, stat tile value 28→23px, `.page-header h2` 22→19px).
+  (stat tile value 28→23px, `.page-header h2` 22→19px, card padding
+  16/20→13/16px, `.main-inner > h3` section headings pulled down to 15px
+  with tighter margins — those margins were most of what read as airy once
+  several sections stacked up). The **greeting went the other way**
+  (30→25→28px): it's the page's only real title, and shrinking everything
+  around it left it looking like just another heading.
   This is a *global UI* knob and is unrelated to `--note-size`, which is
   the reader-controlled A−/A+ size for note bodies only — don't conflate
   them or the A−/A+ buttons will appear to resize the chrome.
@@ -649,11 +688,20 @@ data/                    # git-ignored; daybook.db lives here
   `flex-wrap: wrap` on the row and `flex: 1 1 40%; min-width: 0` on the
   title, a narrow column collapsed the title to one word per line while
   the priority/due/Edit items kept their space. Keep both if you restyle it.
+- **The Dashboard is forward-looking: greeting, countdown, Coming up,
+  Today's tasks, Overdue, Recent notes.** "Completed this week" was
+  removed — it's a backward-looking list, and the page is for what's next
+  (`db.list_tasks_completed_this_week` still exists and is still used by
+  the weekly review). The primary button says "+ Quick note", not "New
+  note": from here it's a capture action rather than a filing one.
 - **The Dashboard de-duplicates "Today" against "Overdue".** An overdue
   task in the `today` bucket satisfies both queries and the two lists sit
   one above the other, so `dashboard.index` filters the overdue ids out of
   the today list. Overdue wins: more urgent framing, and it's the section
-  further down the page.
+  further down the page. **Overdue therefore has to keep its own section**
+  — because the today list has those ids filtered out, dropping the
+  section would make an overdue task vanish from the Dashboard entirely
+  rather than merely be listed twice.
 - **The note body editor is WYSIWYG, not a Markdown-source textarea.**
   `templates/notes/form.html` renders a `contenteditable` div
   (`#body_editor`, class `.rich-editor`) pre-filled with
@@ -860,11 +908,11 @@ and/or its source note. The People page still only shows notes.
   auto-extraction of `- [ ]` / `TODO:` lines from notes into linked tasks
   (dedup on resave, one-way checkbox sync back to the note), dashboard
   now shows today's tasks / overdue / completed-this-week.
-- **Phase 3 (done):** activity log (auto timeline + manual entries), skills
-  tracker (level history + evidence tagged from any note/task/log
-  entry/win), wins log ("Mark as win" from a completed task, Markdown
-  export), weekly review (auto-summary + reflection fields, prev/next
-  week nav, Markdown export).
+- **Phase 3 (done, partly since removed):** skills tracker (level history
+  + evidence tagged from a note or task), weekly review (auto-summary +
+  reflection fields, prev/next week nav, Markdown export). The activity
+  log and wins log shipped here too and have since had their UI removed —
+  see the convention bullet above; their tables and data remain.
 - **Phase 4 (done):** optional AI features via the Anthropic API, off by
   default (`ANTHROPIC_API_KEY` in `.env` + Settings toggle) — summarize a
   note, suggest action items from a note (approved before creating tasks),
@@ -877,6 +925,8 @@ and/or its source note. The People page still only shows notes.
 All five phases from the original spec are complete.
 
 Beyond the spec (added since):
+- **Removed from the spec:** the Activity Log and Wins pages (UI only —
+  data kept). See the convention bullet above.
 - **Outlook "Coming up" on the Dashboard** — upcoming events read from
   classic Outlook desktop (COM, nothing to register) or Graph, lazy-loaded
   via htmx, with "Take notes" prefilling a note from the meeting. See the

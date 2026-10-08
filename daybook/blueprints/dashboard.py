@@ -13,6 +13,10 @@ def index():
     # dashboard shows the two lists one above the other -- so it would
     # otherwise appear twice on the same screen. Overdue wins: it's the
     # more urgent framing, and it's the section further down the page.
+    # Overdue stays on the Dashboard even though "Completed this week" was
+    # dropped: the filter below removes overdue tasks from the today list,
+    # so without its own section an overdue task would vanish from the page
+    # entirely rather than merely being listed twice.
     overdue_ids = {task["id"] for task in overdue_tasks}
     today_tasks = [t for t in db.list_today_flagged_tasks() if t["id"] not in overdue_ids]
     return render_template(
@@ -20,7 +24,6 @@ def index():
         recent_notes=recent_notes,
         today_tasks=today_tasks,
         overdue_tasks=overdue_tasks,
-        completed_this_week=db.list_tasks_completed_this_week(),
         greeting=greetings.greeting_message(config.DISPLAY_NAME),
         quote=greetings.random_quote(),
         internship_week=internship.week_number(config.INTERNSHIP_START_DATE),

@@ -43,6 +43,10 @@
   </select>
   <input type="date" name="from" value="{{ filters.date_from or '' }}">
   <input type="date" name="to" value="{{ filters.date_to or '' }}">
+  <select name="sort">
+    <option value="type" {{ 'selected' if sort != 'date' }}>Group by type</option>
+    <option value="date" {{ 'selected' if sort == 'date' }}>Newest first</option>
+  </select>
   <a class="btn btn-secondary" href="{{ url_for('notes.list_view') }}">Clear</a>
 </form>
 

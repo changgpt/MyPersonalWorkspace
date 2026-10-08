@@ -72,9 +72,6 @@ def export_view(week_str):
     for skill in summary["skills_touched"]:
         lines.append(f"- {skill['name']}")
 
-    lines.append("\n## Wins")
-    for win in summary["wins"]:
-        lines.append(f"- {win['title']}")
 
     if review:
         lines.append("\n## Went well")

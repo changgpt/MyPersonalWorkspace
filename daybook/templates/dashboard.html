@@ -30,7 +30,7 @@
 
 <div class="page-header">
   <h2>Dashboard</h2>
-  <a class="btn" href="{{ url_for('notes.new_view') }}">+ New note</a>
+  <a class="btn" href="{{ url_for('notes.new_view') }}">+ Quick note</a>
 </div>
 
 <h3>Today's tasks</h3>
@@ -51,17 +51,6 @@
     {% include "tasks/_task_row.html" %}
   {% endfor %}
 </ul>
-{% endif %}
-
-<h3>Completed this week</h3>
-{% if completed_this_week %}
-<ul class="task-checklist">
-  {% for task in completed_this_week %}
-    {% include "tasks/_task_row.html" %}
-  {% endfor %}
-</ul>
-{% else %}
-<div class="empty-state">Nothing completed yet this week.</div>
 {% endif %}
 
 <h3>Recent notes</h3>

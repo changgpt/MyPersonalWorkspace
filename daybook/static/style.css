@@ -90,13 +90,13 @@
      stops it collapsing on a small laptop, where filling the width is
      the right answer. These two numbers are the knob -- tune them here
      rather than adding max-widths to individual pages. */
-  --content-width: 66vw;
-  --content-min: 760px;
+  --content-width: 61vw;
+  --content-min: 720px;
 
   /* Base UI type. Left at the browser's 16px default originally, which
      made the whole app read a size larger than it should next to its own
      13-14px meta text. */
-  --ui-size: 15px;
+  --ui-size: 14px;
 }
 
 .btn, .md-toolbar button, .pill-link, .sidebar nav a, .card, .task-row,
@@ -196,7 +196,7 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
 .main {
   flex: 1;
   min-width: 0;
-  padding: 28px 36px;
+  padding: 24px 32px;
 }
 
 /* Centred, and sized by --content-width (see :root) -- never `width: 100%`
@@ -603,8 +603,8 @@ label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 16px 20px;
-  margin-bottom: 12px;
+  padding: 13px 16px;
+  margin-bottom: 10px;
   box-shadow: var(--shadow-sm);
 }
 
@@ -674,7 +674,7 @@ label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom
 
 .greeting-text {
   margin: 0 0 6px;
-  font-size: 25px;
+  font-size: 28px;
   color: var(--accent-hover);
 }
 
@@ -1090,3 +1090,28 @@ footer.app-footer {
   /* Touch has no hover, so the links have to be permanently visible. */
   .coming-up-take-notes, .coming-up-join { opacity: 1; }
 }
+
+
+/* Section headings inside a page (Today's tasks, Recent notes, ...) --
+   the browser default margin on <h3> is sized for prose, and with several
+   sections stacked down a page it was most of what made the Dashboard feel
+   airy and overwhelming. */
+.main-inner > h3 {
+  font-size: 15px;
+  margin: 22px 0 10px;
+}
+.main-inner > h3:first-child { margin-top: 0; }
+
+/* Notes grouped by type (the list's default order). The heading is the
+   type's own colour tag rather than plain text, so the groups are
+   scannable by colour the same way a note's own badge already is. */
+.note-group { margin-bottom: 22px; }
+.note-group-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.note-group-heading .card-meta { margin-top: 0; }

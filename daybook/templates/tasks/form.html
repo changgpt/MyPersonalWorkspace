@@ -50,7 +50,6 @@
     <button class="btn" type="submit">Save</button>
     <a class="btn btn-secondary" href="{{ next }}">Cancel</a>
     {% if task and task['status'] == 'done' %}
-      <a class="btn btn-secondary" href="{{ url_for('wins.new_view', task_id=task['id']) }}">Mark as win</a>
     {% endif %}
   </div>
 </form>

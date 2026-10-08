@@ -1,14 +1,29 @@
 {# Swapped in on its own when the filter bar changes (see notes.list_view's
-   HX-Request branch), so it must carry its own id and outer element. #}
+   HX-Request branch), so it must carry its own id and outer element.
+
+   Two shapes, one partial: grouped under a type heading when sorting by
+   type (the default), a flat grid when sorting by date. The flat case
+   isn't a degenerate group of one -- a single "All notes" heading above
+   one grid would be noise. #}
 {% from "_macros.html" import note_card %}
 <div id="notes-results">
-  {% if notes %}
-  <div class="card-grid">
-    {% for note in notes %}
-      {{ note_card(note) }}
+  {% if not notes %}
+    <div class="empty-state">No notes match these filters.</div>
+  {% elif note_groups %}
+    {% for type_name, type_color, group_notes in note_groups %}
+    <section class="note-group">
+      <h3 class="note-group-heading">
+        <span class="tag tag-{{ type_color }}">{{ type_name }}</span>
+        <span class="card-meta">{{ group_notes | length }}</span>
+      </h3>
+      <div class="card-grid">
+        {% for note in group_notes %}{{ note_card(note, show_type=false) }}{% endfor %}
+      </div>
+    </section>
     {% endfor %}
-  </div>
   {% else %}
-  <div class="empty-state">No notes match these filters.</div>
+    <div class="card-grid">
+      {% for note in notes %}{{ note_card(note) }}{% endfor %}
+    </div>
   {% endif %}
 </div>

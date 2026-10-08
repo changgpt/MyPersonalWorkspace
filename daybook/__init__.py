@@ -22,8 +22,8 @@ def create_app():
     app.add_template_filter(note_prefill, "note_prefill")
 
     from .blueprints import (
-        activity, calendar, dashboard, notes, people, projects, skills, tasks, topics,
-        search, settings, weekly_review, wins,
+        calendar, dashboard, notes, people, projects, skills, tasks, topics,
+        search, settings, weekly_review,
     )
 
     app.register_blueprint(dashboard.bp)
@@ -35,8 +35,6 @@ def create_app():
     app.register_blueprint(search.bp)
     app.register_blueprint(settings.bp)
     app.register_blueprint(skills.bp)
-    app.register_blueprint(wins.bp)
-    app.register_blueprint(activity.bp)
     app.register_blueprint(weekly_review.bp)
     app.register_blueprint(calendar.bp)
     app.cli.add_command(calendar.outlook_login_command)

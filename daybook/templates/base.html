@@ -42,9 +42,7 @@
         <a href="{{ url_for('topics.list_view') }}" class="{{ 'active' if request.blueprint == 'topics' }}">Knowledge Bank</a>
         <a href="{{ url_for('people.list_view') }}" class="{{ 'active' if request.blueprint == 'people' }}">People</a>
         <a href="{{ url_for('projects.list_view') }}" class="{{ 'active' if request.blueprint == 'projects' }}">Projects</a>
-        <a href="{{ url_for('activity.list_view') }}" class="{{ 'active' if request.blueprint == 'activity' }}">Activity Log</a>
         <a href="{{ url_for('skills.list_view') }}" class="{{ 'active' if request.blueprint == 'skills' }}">Skills</a>
-        <a href="{{ url_for('wins.list_view') }}" class="{{ 'active' if request.blueprint == 'wins' }}">Wins</a>
         <a href="{{ url_for('weekly_review.current_view') }}" class="{{ 'active' if request.blueprint == 'weekly_review' }}">Weekly Review</a>
         <a href="{{ url_for('settings.note_types_view') }}" class="{{ 'active' if request.blueprint == 'settings' }}">Settings</a>
       </nav>

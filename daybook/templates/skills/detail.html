@@ -30,10 +30,12 @@
         <a href="{{ url_for('notes.detail_view', note_id=item.entity_id) }}">{{ item.entity_title }}</a>
       {% elif item.entity_type == 'task' %}
         <a href="{{ url_for('tasks.edit_view', task_id=item.entity_id, next=request.full_path) }}">{{ item.entity_title }}</a>
-      {% elif item.entity_type == 'win' %}
-        <a href="{{ url_for('wins.detail_view', win_id=item.entity_id) }}">{{ item.entity_title }}</a>
-      {% elif item.entity_type == 'log_entry' %}
-        <a href="{{ url_for('activity.log_entry_edit_view', log_entry_id=item.entity_id) }}">{{ item.entity_title }}</a>
+      {% else %}
+        {# Wins and log entries no longer have pages (their tables and data
+           are still there -- only the UI was removed), so older evidence
+           pointing at one shows its title without a link rather than a
+           dead one. #}
+        {{ item.entity_title }}
       {% endif %}
     </span>
     <span class="tag tag-slate">{{ item.entity_type.replace('_', ' ') }}</span>
@@ -42,6 +44,6 @@
   {% endfor %}
 </ul>
 {% else %}
-<div class="empty-state">No evidence tagged yet. Tag "skill used" from any note, task, log entry, or win.</div>
+<div class="empty-state">No evidence tagged yet. Tag "skill used" from any note or task.</div>
 {% endif %}
 {% endblock %}

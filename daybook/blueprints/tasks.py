@@ -33,12 +33,30 @@ def _safe_next(default):
     return default
 
 
+def _show_done():
+    """Whether the Today page is showing completed tasks. Lives in the
+    query string (`?done=1`) rather than a cookie or the `setting` table,
+    so the toggle is shareable, reload-safe and back-button-correct for
+    free -- the same reasoning as the filter bars' hx-push-url.
+
+    Read from `request.values` rather than `request.args` so the quick-add
+    form can carry it in its body too: that POST has no query string, and
+    without this, adding a task would re-render the lists with the toggle
+    silently reset."""
+    return request.values.get("done") == "1"
+
+
 def _render_checklists(template):
+    show_done = _show_done()
     return render_template(
         template,
         buckets=BUCKETS,
         bucket_labels=BUCKET_LABELS,
-        tasks_by_bucket={bucket: db.list_tasks_by_bucket(bucket) for bucket in BUCKETS},
+        tasks_by_bucket={
+            bucket: db.list_tasks_by_bucket(bucket, include_done=show_done)
+            for bucket in BUCKETS
+        },
+        show_done=show_done,
     )
 
 
@@ -147,6 +165,19 @@ def move_view(task_id):
         if status not in STATUSES:
             abort(400)
         db.set_task_status(task_id, status)
+    # `order` is the destination list's ids, in their new order, sent by a
+    # drag *within* a list (and alongside `bucket` when one drag does
+    # both). Applied last so it wins over the end-of-list position
+    # set_task_bucket just assigned.
+    order = request.form.get("order")
+    if order:
+        ids = [int(part) for part in order.split(",") if part.strip().isdigit()]
+        # Only ids that really exist, so a hand-crafted list can't renumber
+        # arbitrary rows; the task being moved must be among them.
+        known = db.existing_task_ids(ids)
+        ids = [i for i in ids if i in known]
+        if task_id in ids:
+            db.set_bucket_order(ids)
     return ("", 204)
 
 

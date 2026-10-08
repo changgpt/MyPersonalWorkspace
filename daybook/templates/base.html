@@ -1,3 +1,4 @@
+{% from "_icons.html" import nav_icon %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -36,17 +37,26 @@
     <aside class="sidebar">
       <h1>FiloFax</h1>
       <nav>
-        <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if request.endpoint == 'dashboard.index' }}">Dashboard</a>
-        <a href="{{ url_for('notes.list_view') }}" class="{{ 'active' if request.blueprint == 'notes' }}">Notes</a>
-        <a href="{{ url_for('tasks.today_view') }}" class="{{ 'active' if request.blueprint == 'tasks' }}">Tasks</a>
-        <a href="{{ url_for('topics.list_view') }}" class="{{ 'active' if request.blueprint == 'topics' }}">Knowledge Bank</a>
-        <a href="{{ url_for('people.list_view') }}" class="{{ 'active' if request.blueprint == 'people' }}">People</a>
-        <a href="{{ url_for('projects.list_view') }}" class="{{ 'active' if request.blueprint == 'projects' }}">Projects</a>
-        <a href="{{ url_for('skills.list_view') }}" class="{{ 'active' if request.blueprint == 'skills' }}">Skills</a>
-        <a href="{{ url_for('weekly_review.current_view') }}" class="{{ 'active' if request.blueprint == 'weekly_review' }}">Weekly Review</a>
-        <a href="{{ url_for('settings.note_types_view') }}" class="{{ 'active' if request.blueprint == 'settings' }}">Settings</a>
+        <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if request.endpoint == 'dashboard.index' }}">{{ nav_icon('dashboard') }}Dashboard</a>
+        <a href="{{ url_for('notes.list_view') }}" class="{{ 'active' if request.blueprint == 'notes' }}">{{ nav_icon('notes') }}Notes</a>
+        <a href="{{ url_for('tasks.today_view') }}" class="{{ 'active' if request.blueprint == 'tasks' }}">{{ nav_icon('tasks') }}Tasks</a>
+        <a href="{{ url_for('topics.list_view') }}" class="{{ 'active' if request.blueprint == 'topics' }}">{{ nav_icon('knowledge') }}Knowledge Bank</a>
+        <a href="{{ url_for('people.list_view') }}" class="{{ 'active' if request.blueprint == 'people' }}">{{ nav_icon('people') }}People</a>
+        <a href="{{ url_for('projects.list_view') }}" class="{{ 'active' if request.blueprint == 'projects' }}">{{ nav_icon('projects') }}Projects</a>
+        <a href="{{ url_for('skills.list_view') }}" class="{{ 'active' if request.blueprint == 'skills' }}">{{ nav_icon('skills') }}Skills</a>
+        <a href="{{ url_for('weekly_review.current_view') }}" class="{{ 'active' if request.blueprint == 'weekly_review' }}">{{ nav_icon('review') }}Weekly Review</a>
+        <a href="{{ url_for('settings.note_types_view') }}" class="{{ 'active' if request.blueprint == 'settings' }}">{{ nav_icon('settings') }}Settings</a>
       </nav>
-      <button type="button" class="btn btn-secondary" onclick="toggleDarkMode()" style="margin-top:16px; width:100%;">Toggle dark mode</button>
+      {# A real switch rather than a button labelled "Toggle dark mode":
+         the control should show which state you're in, not just that it
+         can be pressed. role=switch + aria-checked is what makes that
+         legible to a screen reader too, and <button> keeps Enter/Space
+         working for free. app.js keeps aria-checked in step. #}
+      <button type="button" id="theme-switch" class="theme-switch" role="switch"
+              aria-checked="false" onclick="toggleDarkMode()">
+        <span class="theme-switch-label">Dark mode</span>
+        <span class="theme-switch-track"><span class="theme-switch-knob"></span></span>
+      </button>
     </aside>
     <main class="main">
       {# The page fills the window; .main-inner only stops the content

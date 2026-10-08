@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-header">
   <h2>Today</h2>
-  <div>
+  <div class="page-header-actions">
     <a class="btn btn-secondary" href="{{ url_for('tasks.board_view') }}">Board view</a>
     <a class="btn" href="{{ url_for('tasks.new_view', next=request.full_path) }}">+ Add task</a>
   </div>
@@ -17,12 +17,18 @@
       hx-target="#today-checklists"
       hx-swap="outerHTML"
       hx-on::after-request="this.reset(); this.querySelector('input[name=title]').focus()">
-  <input type="text" name="title" placeholder="Quick-add a task for today…" required style="width: 320px;" autofocus>
+  <input type="text" name="title" placeholder="Quick-add a task for today…" required
+         class="quick-add-input" autofocus>
   <button class="btn" type="submit">Add</button>
+  {# Carries the Completed toggle's state into the POST, so adding a task
+     while completed ones are shown doesn't silently hide them again
+     (tasks._show_done reads request.values, covering form body as well as
+     query string -- same as tasks._safe_next). #}
+  <input type="hidden" name="done" value="{{ '1' if show_done else '0' }}">
 </form>
 
 {% include "tasks/_checklists.html" %}
 
-<p class="flash-hint">Drag a task between checklists to re-prioritize it.</p>
+<p class="flash-hint">Drag a task to reorder it, or into another list to re-prioritize it.</p>
 <script src="{{ url_for('static', filename='drag-drop.js') }}"></script>
 {% endblock %}

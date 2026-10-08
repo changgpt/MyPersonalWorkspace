@@ -50,6 +50,7 @@ def init_db():
         # it wasn't actively tracked either way.
         db.execute("UPDATE task SET bucket = 'today' WHERE is_today = 1")
         db.execute("UPDATE task SET bucket = 'background' WHERE is_today = 0")
+    _add_column_if_missing(db, "task", "position", "INTEGER NOT NULL DEFAULT 0")
     _add_column_if_missing(db, "person", "team", "TEXT")
     _add_column_if_missing(db, "person", "how_met", "TEXT")
     _add_column_if_missing(db, "person", "last_contacted_date", "TEXT")
@@ -451,16 +452,29 @@ def search_suggestions(query_text, limit_per_kind=5):
 _PRIORITY_RANK_SQL = "CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 WHEN 'low' THEN 2 ELSE 3 END"
 
 
+def _next_position(db, bucket):
+    """One past the end of `bucket`'s hand-ordered run, or 0 if that bucket
+    has never been reordered. Keeping it at 0 in the untouched case is what
+    lets a fresh task fall into its priority/date place as before, instead
+    of being pinned to the bottom of a list nobody has ordered."""
+    row = db.execute(
+        "SELECT MAX(position) AS top FROM task WHERE bucket = ?", (bucket,)
+    ).fetchone()
+    return (row["top"] or 0) + 1 if (row["top"] or 0) else 0
+
+
 def create_task(title, description="", priority="medium", due_date=None,
                  bucket="today", project_id=None, source_note_id=None,
                  source_line_text=None):
     db = get_db()
     cur = db.execute(
         """INSERT INTO task (title, description, priority, due_date, bucket,
-                              project_id, source_note_id, source_line_text, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                              project_id, source_note_id, source_line_text,
+                              position, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (title, description, priority, due_date, bucket,
-         project_id, source_note_id, source_line_text, now_iso()),
+         project_id, source_note_id, source_line_text,
+         _next_position(db, bucket), now_iso()),
     )
     db.commit()
     return cur.lastrowid
@@ -478,8 +492,48 @@ def update_task(task_id, title, description, priority, due_date, bucket, project
 
 
 def set_task_bucket(task_id, bucket):
+    """Moves a task to `bucket`, landing it at the end of that bucket's
+    hand-ordered run. Dropping into a list has to mean *somewhere*, and the
+    end is the only answer that doesn't silently reshuffle what's already
+    there; `set_bucket_order` is what a drag *within* a list calls, and the
+    move endpoint sends both when a drag does both at once."""
     db = get_db()
-    db.execute("UPDATE task SET bucket = ? WHERE id = ?", (bucket, task_id))
+    db.execute(
+        "UPDATE task SET bucket = ?, position = ? WHERE id = ?",
+        (bucket, _next_position(db, bucket), task_id),
+    )
+    db.commit()
+
+
+def existing_task_ids(task_ids):
+    """The subset of `task_ids` that are real tasks, as a set.
+
+    Used to vet the id list a reorder sends before renumbering anything,
+    so a hand-crafted request can't write positions onto rows the caller
+    made up. One query with placeholders rather than a get_task per id.
+    """
+    if not task_ids:
+        return set()
+    db = get_db()
+    placeholders = ",".join("?" for _ in task_ids)
+    rows = db.execute(
+        f"SELECT id FROM task WHERE id IN ({placeholders})", list(task_ids)
+    ).fetchall()
+    return {row["id"] for row in rows}
+
+
+def set_bucket_order(task_ids):
+    """Renumber `task_ids` as 1..n, in the order given.
+
+    The client sends the whole bucket's ids after a drag rather than one
+    task's new index: renumbering the lot is a handful of UPDATEs at this
+    scale and sidesteps every gap/collision problem a sparse or fractional
+    index would bring. Ids are written one at a time but committed once, so
+    a half-applied order can't be observed.
+    """
+    db = get_db()
+    for index, task_id in enumerate(task_ids, start=1):
+        db.execute("UPDATE task SET position = ? WHERE id = ?", (index, task_id))
     db.commit()
 
 
@@ -590,26 +644,47 @@ def list_today_flagged_tasks():
     ).fetchall()
 
 
-def list_tasks_by_bucket(bucket):
+# Hand-ordered first, then the usual priority/date ordering. `position`
+# is 0 for anything never dragged, so a bucket nobody has reordered sorts
+# exactly as it did before this column existed; once a bucket *is*
+# reordered every row in it gets 1..n and the manual order wins outright.
+# Done tasks always sink to the bottom regardless.
+_BUCKET_ORDER_SQL = (
+    f"(status = 'done'), (position = 0), position, "
+    f"{_PRIORITY_RANK_SQL}, due_date IS NULL, due_date, id"
+)
+
+
+def list_tasks_by_bucket(bucket, include_done=False):
     """Tasks for one of the Today page's three checklists. The "today"
     bucket also pulls in anything overdue regardless of its own bucket (so
-    nothing slips through unnoticed), even if already done today -- that's
-    the one case a task can show up away from its stored bucket. The other
-    two buckets show exactly what's filed there, no overdue pull-forward,
-    so a task doesn't appear in two checklists at once."""
+    nothing slips through unnoticed) -- that's the one case a task can show
+    up away from its stored bucket. The other two buckets show exactly
+    what's filed there, no overdue pull-forward, so a task doesn't appear
+    in two checklists at once.
+
+    `include_done` is what the Today page's "Completed" chip flips. Done
+    tasks are hidden by default: a checklist is for what's left. Note the
+    overdue clause has always carried its own `status != 'done'`, so a
+    completed task is never pulled forward from another bucket either way;
+    `include_done` only widens the bucket's own rows. Ticking a box
+    doesn't make the row disappear under you, because `tasks.toggle_view`
+    swaps that one row in place rather than re-rendering the list.
+    """
     db = get_db()
     today = date.today().isoformat()
+    done_filter = "" if include_done else " AND status != 'done'"
     if bucket == "today":
         return db.execute(
             f"""SELECT * FROM task
-                WHERE bucket = 'today'
+                WHERE (bucket = 'today'{done_filter})
                    OR (due_date IS NOT NULL AND due_date < ? AND status != 'done')
-                ORDER BY (status = 'done'), {_PRIORITY_RANK_SQL}, due_date IS NULL, due_date, id""",
+                ORDER BY {_BUCKET_ORDER_SQL}""",
             (today,),
         ).fetchall()
     return db.execute(
-        f"""SELECT * FROM task WHERE bucket = ?
-            ORDER BY (status = 'done'), {_PRIORITY_RANK_SQL}, due_date IS NULL, due_date, id""",
+        f"""SELECT * FROM task WHERE bucket = ?{done_filter}
+            ORDER BY {_BUCKET_ORDER_SQL}""",
         (bucket,),
     ).fetchall()
 

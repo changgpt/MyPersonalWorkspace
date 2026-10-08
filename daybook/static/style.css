@@ -1115,3 +1115,164 @@ footer.app-footer {
   font-weight: 600;
 }
 .note-group-heading .card-meta { margin-top: 0; }
+
+/* --- Filter bars are secondary chrome -------------------------------
+   Dropdowns and date inputs inherited the full-size control padding,
+   which made a row of five of them the loudest thing on the page and
+   read as clunky. Scoped to .filter-bar so the same controls stay
+   full-size inside a real form, where they're the content. */
+.filter-bar .select-button,
+.filter-bar input[type="date"],
+.filter-bar input[type="text"],
+.filter-bar .btn,
+.filter-bar .btn-secondary {
+  padding: 5px 10px;
+  font-size: 13px;
+}
+.filter-bar .select-button { min-width: 120px; gap: 7px; }
+.filter-bar .select-caret { width: 6px; height: 6px; }
+.filter-bar .select-option { padding: 6px 10px; font-size: 13px; }
+.filter-bar { gap: 6px; margin-bottom: 16px; }
+.quick-add-input { min-width: 280px; }
+
+/* --- The "Completed" toggle on Today ---------------------------------
+   A chip with its own on/off dot rather than a button whose label has to
+   be read to work out the current state. Anchor, not button, so it still
+   works without JS (it's a real URL carrying ?done=). */
+.toggle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+.toggle-chip:hover { border-color: var(--accent-soft); color: var(--text); text-decoration: none; }
+.toggle-chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: background-color var(--t) var(--ease);
+}
+.toggle-chip.is-on { border-color: var(--accent-soft); color: var(--accent-hover); background: var(--accent-soft); }
+.toggle-chip.is-on .toggle-chip-dot { background: var(--accent); }
+
+/* --- Today: stacked lists, not a second board -----------------------
+   The Today and Board views were near-indistinguishable when both were
+   three columns of cards. Today is now full-width stacked sections, which
+   is also the only shape where drag-to-reorder reads as reordering. */
+.today-lists { display: flex; flex-direction: column; gap: 20px; }
+.today-list-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.today-list-head h3 { margin: 0; font-size: 14px; letter-spacing: 0.02em; }
+.today-list-count {
+  font-size: 12px;
+  color: var(--text-faint);
+  background: var(--surface-sunken);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+/* min-height keeps an empty list a droppable target; the placeholder row
+   lives inside the <ul> for the same reason. */
+.today-list-items { min-height: 38px; margin: 0; }
+.today-list-empty {
+  list-style: none;
+  padding: 9px 12px;
+  color: var(--text-faint);
+  font-size: 13px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+}
+/* The grab affordance: a dotted handle that only appears on hover, so a
+   row at rest stays clean. ::before rather than markup, since the row is
+   shared with lists that aren't draggable. */
+.today-list-items .task-row[draggable="true"] { position: relative; }
+.today-list-items .task-row[draggable="true"]::before {
+  content: "⠿";
+  position: absolute;
+  left: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-faint);
+  font-size: 12px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity var(--t-fast) var(--ease);
+}
+.today-list-items .task-row[draggable="true"]:hover { padding-left: 22px; }
+.today-list-items .task-row[draggable="true"]:hover::before { opacity: 1; }
+.today-list-items .task-row.dragging { opacity: 0.4; }
+
+/* --- Sidebar icons --------------------------------------------------- */
+.sidebar nav a { display: flex; align-items: center; gap: 9px; }
+.nav-icon { flex: none; opacity: 0.75; }
+.sidebar nav a:hover .nav-icon, .sidebar nav a.active .nav-icon { opacity: 1; }
+
+/* --- Dark mode switch ------------------------------------------------
+   Shows which state you're in instead of only that it can be pressed. */
+.theme-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  margin-top: 18px;
+  padding: 7px 10px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.theme-switch:hover { color: var(--text); border-color: var(--accent-soft); }
+.theme-switch-track {
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 17px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  transition: background-color var(--t) var(--ease), border-color var(--t) var(--ease);
+}
+.theme-switch-knob {
+  position: absolute;
+  top: 1.5px;
+  left: 1.5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: transform var(--t) var(--ease), background-color var(--t) var(--ease);
+}
+/* Driven by aria-checked, so the one attribute a screen reader reads is
+   also the one that moves the knob -- they can't drift apart. */
+.theme-switch[aria-checked="true"] .theme-switch-track {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.theme-switch[aria-checked="true"] .theme-switch-knob {
+  transform: translateX(13px);
+  background: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-switch-knob { transition: background-color var(--t) var(--ease); }
+}
+
+/* The Completed chip's own row, inside the swapped region (see
+   _checklists.html for why it can't sit in the quick-add bar). */
+.today-controls { display: flex; justify-content: flex-end; margin-bottom: -6px; }

@@ -109,6 +109,12 @@ CREATE TABLE IF NOT EXISTS task (
     -- find the line again when flipping its checkbox (see db.set_task_status).
     -- NULL for tasks created directly (not from a note).
     source_line_text TEXT,
+    -- Manual order within a bucket, renumbered 1..n by
+    -- db.set_bucket_order when a task is dragged. 0 means "never
+    -- hand-ordered", which sorts above the rest and then falls
+    -- through to the priority/date ordering -- so a database that has
+    -- never been reordered behaves exactly as before.
+    position INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     completed_at TEXT
 );

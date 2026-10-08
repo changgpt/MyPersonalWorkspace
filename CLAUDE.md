@@ -67,6 +67,7 @@ daybook/
   static/toasts.js          # flash messages + window.showToast()
   static/select.js          # styled hover-to-open dropdowns over <select>
   static/search.js          # search typeahead: dismissal + arrow keys
+  templates/_icons.html     # nav_icon(): inline SVG sidebar icons
   blueprints/           # one file per feature area (notes, people, projects,
                         # tasks, topics, search, settings, dashboard, skills,
                         # calendar, weekly_review)
@@ -289,9 +290,56 @@ data/                    # git-ignored; daybook.db lives here
   /tasks/new` (`tasks.new_view`/`create_view`) reuses `tasks/form.html` in a
   create mode (`task=None`) for everything else (description, priority, due
   date, project, bucket) — the same template `edit_view` uses, just with the
-  delete button, "Mark as win" link, and skills tagger all hidden behind
-  `{% if task %}` (a task that doesn't exist yet has nothing to delete, tag,
-  or have already been a win).
+  delete button and skills tagger hidden behind `{% if task %}` (a task
+  that doesn't exist yet has nothing to delete or tag).
+- **Today is a stacked list; Board is columns. Keep them different.** Both
+  were three columns of cards and were near-indistinguishable ("the board
+  view and task view look a bit too similar"). Today is now full-width
+  stacked sections (`.today-lists`), which is also the only shape in which
+  drag-to-reorder reads as reordering. Don't make either look like the
+  other again.
+  - Each list's empty placeholder is a `<li>` **inside** the `<ul>`, not a
+    div after it: an empty `<ul>` is zero pixels tall, so there'd be
+    nothing to drop the first task onto. `.today-list-items` also carries
+    a `min-height` for the same reason. `drag-drop.js` removes the
+    placeholder when something lands on it.
+- **A task's manual order within a bucket is `task.position`**, renumbered
+  1..n by `db.set_bucket_order`. The ordering is
+  `db._BUCKET_ORDER_SQL`: done last, then `(position = 0)`, then
+  `position`, then the usual `_PRIORITY_RANK_SQL`/due-date chain.
+  - **`position = 0` means "never hand-ordered"** and sorts *above* the
+    numbered rows, falling through to the priority/date ordering. That's
+    what makes this change invisible in a database nobody has reordered —
+    all-zero positions reproduce the old ordering exactly — while a bucket
+    that *has* been reordered gets 1..n and wins outright.
+  - `db._next_position` puts a new task at the end of its bucket's ordered
+    run, but returns 0 when that bucket has no ordered run, so a fresh
+    task still falls into its priority place rather than being pinned to
+    the bottom of a list nobody ordered. `set_task_bucket` uses it too: a
+    drop into another list lands at the end, which is the only answer that
+    doesn't silently reshuffle what's already there.
+  - The client sends the destination list's **whole id list** as `order`,
+    not one task's index — renumbering the lot is a handful of UPDATEs at
+    this scale and sidesteps every gap/collision problem a sparse or
+    fractional index would bring. `move_view` vets the ids through
+    `db.existing_task_ids` and **requires the moved task to be among
+    them**, so a hand-crafted request can't renumber unrelated rows.
+- **The Today page's "Completed" chip is a `?done=1` query param**, read by
+  `tasks._show_done`. In the URL rather than a cookie or the `setting`
+  table, so it's shareable, reload-safe and back-button-correct for free —
+  same reasoning as the filter bars' `hx-push-url`.
+  - **The chip must live inside the swapped partial** (`_checklists.html`),
+    not in the quick-add bar above it. It originally sat outside the swap
+    target, so it was never re-rendered: after one click it still linked to
+    `?done=1` and the toggle only ever turned *on*. If you move it, move
+    the swap target with it.
+  - `_show_done` reads `request.values`, not `request.args`, because the
+    quick-add form carries the state in its **body** (that POST has no
+    query string) — without it, adding a task silently reset the toggle.
+    Same trick as `tasks._safe_next`.
+  - Ticking a checkbox doesn't make the row vanish under you even with the
+    toggle off, because `tasks.toggle_view` swaps that one row in place
+    rather than re-rendering the list.
 - **Drag-and-drop is plain HTML5 drag/drop** (`static/drag-drop.js`), no
   library, and is generic over any page: a draggable item needs
   `draggable="true" data-task-id="<id>"`, a drop target needs
@@ -318,6 +366,13 @@ data/                    # git-ignored; daybook.db lives here
   checklists (set directly in `today.html`, and by `tasks.toggle_view` on
   the swapped-in row when it recognizes the page it's swapping into as
   Today).
+  - A zone marked **`data-reorder`** also supports dragging *within* it:
+    `dragover` moves the row live (via `itemToInsertBefore`, which flips at
+    each row's vertical **midpoint** — edges feel wrong), and the drop
+    sends the zone's whole id list as `order`. Only the Today lists set
+    it. The Board deliberately doesn't: its columns have no manual order,
+    so letting cards be shuffled there would promise something the server
+    won't keep.
 - **SkillEvidence is a lightweight polymorphic link**, not four nullable FK
   columns: `entity_type` (`note`/`task`/`log_entry`/`win`) + `entity_id`,
   resolved back to a title via `_EVIDENCE_ENTITY_TABLES` in `db.py`. The
@@ -431,6 +486,29 @@ data/                    # git-ignored; daybook.db lives here
   - Overflow is checked by driving every page in a browser and asserting
     nothing in `.main-inner` extends past the viewport; do that again if
     you change the measure.
+- **Filter bars are secondary chrome and are sized down** (`.filter-bar
+  .select-button`, its date/text inputs and its buttons: 5/10px padding,
+  13px). They inherited the full-size control padding, which made a row of
+  five of them the loudest thing on a page and read as clunky and
+  unprofessional. The reduction is **scoped to `.filter-bar`** so the same
+  controls stay full-size inside a real form, where they're the content
+  rather than the chrome.
+- **Sidebar icons are inline SVG** from the `nav_icon(name)` macro in
+  `templates/_icons.html` — not an icon font, not a sprite, and not a CDN
+  (consistent with htmx/Turndown being vendored). Nine small glyphs cost
+  less than the request that would fetch them, they inherit
+  `currentColor` so the hover/active/dark-mode states need no extra rules,
+  and there's no flash of missing icons on first paint. All are 16x16 with
+  a 1.5px stroke and no fill, set on the `<svg>` itself: one visual weight,
+  so the nav can't end up looking like icons from three different sets.
+- **The dark-mode control is a switch, not a button** (`.theme-switch` +
+  `role="switch"`/`aria-checked`). A button labelled "Toggle dark mode"
+  only told you it could be pressed, not which state you were in. The CSS
+  is driven off `[aria-checked="true"]` rather than a separate class, so
+  the one attribute a screen reader reads is also the one that moves the
+  knob — they can't drift apart. `app.js`'s `syncThemeSwitch` sets it on
+  `DOMContentLoaded` (the theme itself is still applied before first paint
+  by the inline script in `base.html`'s head, so there's no flash).
 - **Base UI type is `--ui-size` (14px), set on `body`.** It was left at
   the browser's 16px default originally, which made the whole app read a
   size larger than it should next to its own 13-14px meta text ("everything
@@ -891,7 +969,9 @@ added via a manual `ALTER TABLE` migration in `db.init_db` since
 see `_add_column_if_missing`), three join tables (`note_person`,
 `note_project`, `note_topic`), the `note_fts` virtual table, `task`
 (status/priority/due_date/is_today/project_id/source_note_id/
-source_line_text), `skill` + `skill_level_history` + `skill_evidence`,
+source_line_text/position — `position` is the manual order within a
+bucket, added by `_add_column_if_missing`; see the ordering convention
+above), `skill` + `skill_level_history` + `skill_evidence`,
 `log_entry`, `win` + `win_person`, `weekly_review`, and `setting`
 (generic key/value, currently just the AI-features toggle).
 

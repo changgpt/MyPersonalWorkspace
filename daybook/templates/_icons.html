@@ -1,0 +1,41 @@
+{# Inline SVG icons for the sidebar.
+
+   Inline rather than an icon font or a sprite file, and certainly not a
+   CDN (consistent with htmx/Turndown being vendored): nine small glyphs
+   cost less than the request that would fetch them, they inherit
+   `currentColor` so the active/hover/dark-mode states need no extra
+   rules, and there's no flash of missing icons on first paint.
+
+   All are 16x16, 1.5px stroke, no fill -- a single visual weight, so the
+   nav doesn't look like icons from three different sets. `stroke-width`
+   stays on the <svg> so a caller can't accidentally change one. #}
+{% macro nav_icon(name) %}
+<svg class="nav-icon" width="16" height="16" viewBox="0 0 16 16" fill="none"
+     stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+     stroke-linejoin="round" aria-hidden="true" focusable="false">
+  {%- if name == 'dashboard' -%}
+    <rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/>
+    <rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/>
+  {%- elif name == 'notes' -%}
+    <path d="M4 2h8v12H4z"/><path d="M6 5h4M6 8h4M6 11h2"/>
+  {%- elif name == 'tasks' -%}
+    <path d="M2 4.5l2 2 3-3"/><path d="M2 11.5l2 2 3-3"/><path d="M9.5 4h5M9.5 11h5"/>
+  {%- elif name == 'knowledge' -%}
+    <path d="M3 3h4a1 1 0 011 1v9a1 1 0 00-1-1H3z"/>
+    <path d="M13 3H9a1 1 0 00-1 1v9a1 1 0 011-1h4z"/>
+  {%- elif name == 'people' -%}
+    <circle cx="6" cy="5.5" r="2.5"/><path d="M1.5 14c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4"/>
+    <path d="M11 3.5a2.5 2.5 0 010 4.8"/><path d="M12 10.3c1.6.5 2.5 1.8 2.5 3.7"/>
+  {%- elif name == 'projects' -%}
+    <path d="M2 5.5h12v8H2z"/><path d="M6 5.5V4a1 1 0 011-1h2a1 1 0 011 1v1.5"/><path d="M2 9h12"/>
+  {%- elif name == 'skills' -%}
+    <path d="M8 2l1.9 3.9 4.1.6-3 2.9.7 4.1L8 11.6 4.3 13.5l.7-4.1-3-2.9 4.1-.6z"/>
+  {%- elif name == 'review' -%}
+    <rect x="2" y="3" width="12" height="11" rx="1"/><path d="M2 6.5h12M5.5 3V1.5M10.5 3V1.5"/>
+    <path d="M5.5 9.5l1.5 1.5 3-3"/>
+  {%- elif name == 'settings' -%}
+    <circle cx="8" cy="8" r="2.2"/>
+    <path d="M8 1.5v1.8M8 12.7v1.8M1.5 8h1.8M12.7 8h1.8M3.4 3.4l1.3 1.3M11.3 11.3l1.3 1.3M12.6 3.4l-1.3 1.3M4.7 11.3l-1.3 1.3"/>
+  {%- endif -%}
+</svg>
+{% endmacro %}

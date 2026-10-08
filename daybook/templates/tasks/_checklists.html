@@ -1,21 +1,44 @@
-{# Swapped in on its own after a quick-add (see tasks.today_view /
-   quick_add_view), so it carries its own id and outer element. Drag-drop
+{# Swapped in on its own after a quick-add or a toggle (see tasks.today_view
+   / quick_add_view), so it carries its own id and outer element. Drag-drop
    keeps working on the replacement markup because drag-drop.js delegates
-   every listener to document rather than binding these zones. #}
-<div class="today-board" id="today-checklists">
+   every listener to document rather than binding these zones.
+
+   Stacked full-width sections, deliberately *not* the Board's columns:
+   the two views were near-indistinguishable when both were three columns
+   of cards, and a vertical list is also the only shape in which
+   drag-to-reorder reads as reordering. #}
+<div class="today-lists" id="today-checklists">
+  {# Inside the swapped region on purpose. Sitting up in the quick-add bar,
+     it was never re-rendered by the swap, so after one click it still
+     linked to ?done=1 and the toggle would only ever turn on. #}
+  <div class="today-controls">
+    <a class="toggle-chip{{ ' is-on' if show_done }}"
+       href="{{ url_for('tasks.today_view', done='0' if show_done else '1') }}"
+       hx-get="{{ url_for('tasks.today_view', done='0' if show_done else '1') }}"
+       hx-target="#today-checklists" hx-swap="outerHTML" hx-push-url="true"
+       role="switch" aria-checked="{{ 'true' if show_done else 'false' }}">
+      <span class="toggle-chip-dot"></span>Completed
+    </a>
+  </div>
   {% for bucket in buckets %}
-  <div class="board-column">
-    <h3>{{ bucket_labels[bucket] }}</h3>
-    <ul class="task-checklist board-column-list" data-drop-zone data-bucket="{{ bucket }}">
+  <section class="today-list">
+    <div class="today-list-head">
+      <h3>{{ bucket_labels[bucket] }}</h3>
+      <span class="today-list-count">{{ tasks_by_bucket[bucket] | length }}</span>
+    </div>
+    <ul class="task-checklist today-list-items"
+        data-drop-zone data-reorder data-bucket="{{ bucket }}">
       {% for task in tasks_by_bucket[bucket] %}
-        {% set next_url = request.path %}
+        {% set next_url = request.full_path %}
         {% set draggable = true %}
         {% include "tasks/_task_row.html" %}
       {% endfor %}
+      {% if not tasks_by_bucket[bucket] %}
+      {# Inside the list, not after it: an empty <ul> is zero pixels tall,
+         so there would be nothing to drop the first task onto. #}
+      <li class="today-list-empty">Nothing here. Drag a task in, or add one above.</li>
+      {% endif %}
     </ul>
-    {% if not tasks_by_bucket[bucket] %}
-    <div class="empty-state">Nothing here yet.</div>
-    {% endif %}
-  </div>
+  </section>
   {% endfor %}
 </div>

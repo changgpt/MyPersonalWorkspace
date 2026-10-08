@@ -470,7 +470,10 @@ def test_hint_for_pywin32_not_installed_names_the_interpreter_safe_command(monke
     # `python -m pip`, not bare `pip`: installing into a different
     # interpreter is the usual reason it "installed" and still won't load.
     assert "python -m pip install" in hint
-    assert "outlook-check" in hint
+    # Points at the run.py form, not `flask outlook-check`: on Windows
+    # `flask` is routinely not on PATH, which is the same class of problem.
+    assert "run.py --check-outlook" in hint
+    assert "flask" not in hint
 
 
 def test_hint_for_a_dll_failure_says_to_run_the_post_install(monkeypatch):
@@ -499,3 +502,31 @@ def test_import_error_returns_none_when_pywin32_imports(monkeypatch):
     monkeypatch.setattr(builtins, "__import__", fake)
     assert cs.OutlookComSource().import_error() is None
     assert cs.OutlookComSource().is_available() is True
+
+
+def test_no_user_facing_string_sends_you_to_the_flask_cli():
+    """Advice must not depend on `flask` being on PATH.
+
+    The commands these hints name exist to diagnose environment breakage
+    (wrong interpreter, missing Scripts dir) -- and that same breakage is
+    what leaves `flask` unresolvable in the first place. Both commands are
+    also on `python run.py`, so every hint should say that instead.
+    """
+    import datetime as dt
+    from unittest import mock
+
+    hints = []
+    cases = [
+        ("win32", ModuleNotFoundError("No module named 'win32com'"), ""),
+        ("win32", ImportError("DLL load failed while importing win32api"), ""),
+        ("linux", ModuleNotFoundError("x"), ""),
+        ("linux", ModuleNotFoundError("x"), "abc-123"),
+    ]
+    for platform, com_error, client_id in cases:
+        with mock.patch.object(cs.sys, "platform", platform), \
+             mock.patch.object(cs.OutlookComSource, "import_error", lambda self, e=com_error: e), \
+             mock.patch.object(cs.config, "GRAPH_CLIENT_ID", client_id):
+            hints.append(cs.unavailable_hint("auto"))
+
+    offenders = [h for h in hints if "flask" in h]
+    assert not offenders, f"hint(s) point at the flask CLI: {offenders}"

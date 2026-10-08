@@ -16,7 +16,8 @@ Two sources, because the right one depends on the machine:
   work laptop. It can't work on the "new Outlook" app (no COM interface)
   or on any non-Windows machine.
 - `GraphSource` calls Microsoft Graph with a delegated token obtained once
-  by `flask outlook-login` (device code) and refreshed silently after that.
+  by `python run.py --outlook-login` (device code, also available as
+  `flask outlook-login`) and refreshed silently after that.
   It works anywhere, including new Outlook, but needs an app registration.
 
 `resolve_source()` picks: whatever `OUTLOOK_SOURCE` names, or the first
@@ -147,11 +148,12 @@ def event_from_graph(payload, self_email=""):
 class GraphSource:
     """Delegated Microsoft Graph access, refreshed silently.
 
-    The device-code prompt lives in `flask outlook-login`, not here: a web
+    The device-code prompt lives in the `--outlook-login` entry point, not
+    here: a web
     request can't sensibly block for 60 seconds while someone types a code
     into a browser, so the CLI does that once and leaves a token cache
     behind. This class only ever calls `acquire_token_silent`, and says
-    "run flask outlook-login" if that comes back empty.
+    "run --outlook-login" if that comes back empty.
     """
 
     name = "graph"
@@ -204,7 +206,7 @@ class GraphSource:
         if not config.GRAPH_CLIENT_ID:
             raise CalendarError(
                 "Microsoft Graph isn't configured yet -- set GRAPH_CLIENT_ID "
-                "in .env, then run `flask outlook-login`."
+                "in .env, then run `python run.py --outlook-login`."
             )
         cache = self._load_cache()
         app = self._msal_app(cache)
@@ -212,11 +214,14 @@ class GraphSource:
         result = app.acquire_token_silent(GRAPH_SCOPES, account=accounts[0]) if accounts else None
         self._save_cache(cache)
         if not result or "access_token" not in result:
-            raise CalendarError("Outlook sign-in has expired -- run `flask outlook-login` again.")
+            raise CalendarError(
+                "Outlook sign-in has expired -- run `python run.py --outlook-login` again."
+            )
         return result["access_token"]
 
     def sign_in(self, echo=print):
-        """Device-code flow, called by `flask outlook-login`. Prints the
+        """Device-code flow, called by `run.py --outlook-login` (and by
+        `flask outlook-login`). Prints the
         code and blocks until the browser side completes."""
         _require_msal()
         if not config.GRAPH_CLIENT_ID:
@@ -457,8 +462,8 @@ def unavailable_hint(preference=None):
                 "Outlook desktop needs the pywin32 package, which isn't installed in "
                 "the Python running this app. Run `python -m pip install -r "
                 "requirements.txt` (that exact form, so it installs into this same "
-                "Python), then restart `python run.py`. `flask outlook-check` prints "
-                "which interpreter that is."
+                "Python), then restart `python run.py`. "
+                "`python run.py --check-outlook` prints which interpreter that is."
             )
         # Installed but not loadable -- almost always the post-install step
         # that registers pywin32's DLLs, which pip can't run unelevated.
@@ -480,9 +485,61 @@ def unavailable_hint(preference=None):
         return (
             "Outlook desktop needs Windows, so this machine has to use Microsoft "
             "Graph: set GRAPH_CLIENT_ID in .env (see .env.example), then run "
-            "`flask outlook-login`."
+            "`python run.py --outlook-login`."
         )
-    return "Almost there -- run `flask outlook-login` to finish connecting to Outlook."
+    return ("Almost there -- run `python run.py --outlook-login` to finish "
+            "connecting to Outlook.")
+
+
+def diagnose(echo=print):
+    """Print why the "Coming up" card isn't showing anything.
+
+    Deliberately reachable *without* the flask CLI (see run.py's
+    --check-outlook): the failures this exists to diagnose are environment
+    ones, and on Windows `flask` is routinely not on PATH for exactly the
+    same reason pywin32 ends up in a different interpreter than the app.
+    A diagnostic that needs the broken plumbing to work is no diagnostic.
+
+    Prints counts only, never event subjects, so the output is safe to
+    paste into a chat or an issue.
+    """
+    echo(f"platform          : {sys.platform}")
+    echo(f"python            : {sys.version.split()[0]}")
+    # The one fact the card itself can't show, and the usual culprit when
+    # pywin32 "is installed" but won't import: pip put it in a different
+    # interpreter than the one running the app.
+    echo(f"interpreter       : {sys.executable}")
+    echo(f"OUTLOOK_SOURCE    : {config.OUTLOOK_SOURCE}")
+
+    com_error = OutlookComSource().import_error()
+    echo(f"pywin32 importable: {com_error is None}")
+    if com_error is not None:
+        echo(f"  import error    : {type(com_error).__name__}: {com_error}")
+    echo(f"GRAPH_CLIENT_ID   : {'set' if config.GRAPH_CLIENT_ID else 'not set'}")
+    echo(f"graph signed in   : {GraphSource().is_available()}")
+
+    try:
+        source = resolve_source()
+    except CalendarError as exc:
+        echo(f"\nresolved source   : none -- {exc}")
+        return
+    if source is None:
+        echo("\nresolved source   : none")
+        echo(unavailable_hint())
+        return
+
+    echo(f"\nresolved source   : {source.label}")
+    from . import calendar_utils
+
+    calendar_utils.clear_cache()
+    try:
+        days, _label = calendar_utils.upcoming(0)
+    except CalendarError as exc:
+        echo(f"reading it failed : {exc}")
+        return
+    for day in days or []:
+        echo(f"  {day['date']:%a %d %b}: {len(day['events'])} event(s)")
+    echo("OK -- the card should show this.")
 
 
 def resolve_source(preference=None):

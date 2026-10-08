@@ -483,11 +483,16 @@ data/                    # git-ignored; daybook.db lives here
     used to sit here told the user it "works with no setup", which is the
     one thing that wasn't true. Each branch names the one next step for
     the platform it's actually on (install pywin32 / `OUTLOOK_SOURCE` is
-    pinned elsewhere / set `GRAPH_CLIENT_ID` / run `flask outlook-login`).
+    pinned elsewhere / set `GRAPH_CLIENT_ID` / run `--outlook-login`).
     Keep it that way: a card with one line of room has to spend it on the
-    actual cause. `flask outlook-check` prints the same facts plus a trial
-    fetch (counts only, never subjects, so it's safe to paste) for when
-    one line isn't enough.
+    actual cause. `calendar_sources.diagnose()` prints the same facts plus
+    a trial fetch (counts only, never subjects, so it's safe to paste) for
+    when one line isn't enough, reachable both as `flask outlook-check`
+    **and** as `python run.py --check-outlook`. Every user-facing string
+    points at the `run.py` form: on Windows `flask` is routinely absent
+    from PATH for the same reason pywin32 lands in the wrong interpreter,
+    and a diagnostic that needs the broken plumbing to run is no
+    diagnostic. Same for `--outlook-login`. Keep new advice on that form.
   - **`OutlookComSource.import_error()` keeps the ImportError rather than
     collapsing it to a boolean**, because pywin32 has two failure modes
     that both raise ImportError and need *opposite* fixes:
@@ -501,8 +506,8 @@ data/                    # git-ignored; daybook.db lives here
     already installed sends them round in circles, so the underlying error
     is quoted in the card. `outlook-check` also prints `sys.executable`,
     which is the one fact the card can't show and the commonest culprit.
-  - **The device-code prompt lives in `flask outlook-login`, not in a
-    request.** A web request can't block for a minute while someone types
+  - **The device-code prompt lives in the `--outlook-login` command, not
+    in a request.** A web request can't block for a minute while someone types
     a code into a browser, so the CLI does it once and leaves an MSAL
     token cache in `data/` (git-ignored, chmod 600 where the OS honours
     it); the app itself only ever calls `acquire_token_silent`. There is
@@ -761,6 +766,12 @@ export FLASK_APP=run.py
 flask backup-db       # copies data/daybook.db to data/backups/daybook-<timestamp>.db
 flask outlook-login   # Graph calendar path only; Outlook desktop needs no sign-in
 flask outlook-check   # why the Dashboard's "Coming up" card is empty
+
+# Same two, without needing FLASK_APP set or `flask` on PATH -- prefer these
+# when telling a user what to run, since the things they diagnose (a wrong
+# interpreter, a missing Scripts dir) are exactly what breaks `flask`:
+python run.py --check-outlook
+python run.py --outlook-login
 ```
 
 Tests use a temporary SQLite file per test (see `tests/conftest.py`), never

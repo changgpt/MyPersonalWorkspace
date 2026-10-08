@@ -60,48 +60,7 @@ def outlook_login_command():
 def outlook_check_command():
     """Say why the Dashboard's Coming up card isn't showing anything.
 
-    Exists because the card can only show one short line, and the actual
-    cause is usually an environment fact the user can't see from the
-    browser (pywin32 missing, OUTLOOK_SOURCE pinned, no token yet). Prints
-    counts only -- never event subjects -- so it's safe to paste.
+    Also available as `python run.py --check-outlook`, which needs neither
+    FLASK_APP nor `flask` on PATH -- see calendar_sources.diagnose.
     """
-    import sys
-
-    from .. import config
-
-    click.echo(f"platform          : {sys.platform}")
-    click.echo(f"python            : {sys.version.split()[0]}")
-    # The one fact the card itself can't show, and the usual culprit when
-    # pywin32 "is installed" but won't import: pip put it in a different
-    # interpreter than the one running the app.
-    click.echo(f"interpreter       : {sys.executable}")
-    click.echo(f"OUTLOOK_SOURCE    : {config.OUTLOOK_SOURCE}")
-    com = calendar_sources.OutlookComSource()
-    graph = calendar_sources.GraphSource()
-    com_error = com.import_error()
-    click.echo(f"pywin32 importable: {com_error is None}")
-    if com_error is not None:
-        click.echo(f"  import error    : {type(com_error).__name__}: {com_error}")
-    click.echo(f"GRAPH_CLIENT_ID   : {'set' if config.GRAPH_CLIENT_ID else 'not set'}")
-    click.echo(f"graph signed in   : {graph.is_available()}")
-
-    try:
-        source = calendar_sources.resolve_source()
-    except calendar_sources.CalendarError as exc:
-        click.echo(f"\nresolved source   : none -- {exc}")
-        return
-    if source is None:
-        click.echo(f"\nresolved source   : none")
-        click.echo(calendar_sources.unavailable_hint())
-        return
-
-    click.echo(f"\nresolved source   : {source.label}")
-    calendar_utils.clear_cache()
-    try:
-        days, label = calendar_utils.upcoming(0)
-    except calendar_sources.CalendarError as exc:
-        click.echo(f"reading it failed : {exc}")
-        return
-    for day in days or []:
-        click.echo(f"  {day['date']:%a %d %b}: {len(day['events'])} event(s)")
-    click.echo("OK -- the card should show this.")
+    calendar_sources.diagnose(echo=click.echo)

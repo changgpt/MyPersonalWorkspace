@@ -88,11 +88,16 @@ def test_grouped_cards_do_not_repeat_the_type_tag(client, app):
     assert grouped.count('class="tag tag-') < flat.count('class="tag tag-')
 
 
-def test_compose_screen_hides_the_search_box(client, app):
-    # Writing is the one screen where search is pure noise.
-    assert "global-search" not in client.get("/notes/new").get_data(as_text=True)
-    # ...and it's still there everywhere else.
-    assert "global-search" in client.get("/notes").get_data(as_text=True)
+def test_search_lives_in_the_sidebar_not_over_the_content(client, app):
+    # It used to sit on top of every page, which made it noise on the
+    # screens you write on. It's now one field in the nav column, so it's
+    # present everywhere but never part of the page itself.
+    for path in ("/notes/new", "/notes", "/", "/weekly-review", "/settings/note-types"):
+        body = client.get(path, follow_redirects=True).get_data(as_text=True)
+        assert "global-search" in body, path
+        sidebar, _, main = body.partition('<main class="main">')
+        assert "global-search" in sidebar, path
+        assert "global-search" not in main, path
 
 
 def test_compose_date_renders_as_a_friendly_chip(client, app):

@@ -16,4 +16,15 @@
 {% else %}
   <div class="empty-state">No notes tag this topic yet.</div>
 {% endif %}
+
+{# Topics have no edit page, so the destructive action lives here
+   rather than on a form. Same .compose-danger treatment as the
+   compose screens. #}
+<div class="compose-extra">
+  <form class="compose-danger" method="post"
+        action="{{ url_for('topics.delete_view', topic_id=topic['id']) }}"
+        onsubmit="return confirm('Delete this topic? Its notes stay, but lose the tag. This cannot be undone.')">
+    <button type="submit">Delete this topic</button>
+  </form>
+</div>
 {% endblock %}

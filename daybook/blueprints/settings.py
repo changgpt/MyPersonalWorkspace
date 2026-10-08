@@ -4,7 +4,9 @@ import re
 import zipfile
 from datetime import date
 
-from flask import Blueprint, abort, redirect, render_template, request, send_file, url_for
+from flask import (
+    Blueprint, abort, flash, redirect, render_template, request, send_file, url_for
+)
 
 from .. import ai, db
 
@@ -77,6 +79,32 @@ def note_type_activate_view(note_type_id):
     if db.get_note_type(note_type_id) is None:
         abort(404)
     db.set_note_type_active(note_type_id, is_active=True)
+    return redirect(url_for("settings.note_types_view"))
+
+
+@bp.route("/note-types/<int:note_type_id>/delete", methods=["POST"])
+def note_type_delete_view(note_type_id):
+    """Delete a note type, but only while nothing is filed under it.
+
+    Every note has a type and there's no "untyped" to fall back to, so a
+    type in use can't be deleted without taking its notes with it -- which
+    is what Archive is for (it drops the type out of the picker and leaves
+    the notes alone). Refusing with that as the suggestion is better than
+    either a cascade nobody asked for or a bare FK error.
+    """
+    note_type = db.get_note_type(note_type_id)
+    if note_type is None:
+        abort(404)
+    in_use = db.notes_using_note_type(note_type_id)
+    if in_use:
+        flash(
+            f"\u201c{note_type['name']}\u201d is still on {in_use} "
+            f"note{'s' if in_use != 1 else ''}. Archive it instead.",
+            "error",
+        )
+        return redirect(url_for("settings.note_types_view"))
+    db.delete_note_type(note_type_id)
+    flash(f"Deleted \u201c{note_type['name']}\u201d.")
     return redirect(url_for("settings.note_types_view"))
 
 

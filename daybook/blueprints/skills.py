@@ -1,4 +1,4 @@
-from flask import Blueprint, abort, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
 from .. import db
 
@@ -58,6 +58,16 @@ def update_view(skill_id):
         notes=form.get("notes", ""), level=int(form["level"]),
     )
     return redirect(url_for("skills.detail_view", skill_id=skill_id))
+
+
+@bp.route("/<int:skill_id>/delete", methods=["POST"])
+def delete_view(skill_id):
+    skill = db.get_skill(skill_id)
+    if skill is None:
+        abort(404)
+    db.delete_skill(skill_id)
+    flash(f"Deleted {skill['name']}.")
+    return redirect(url_for("skills.list_view"))
 
 
 @bp.route("/evidence", methods=["POST"])

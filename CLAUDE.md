@@ -140,6 +140,51 @@ data/                    # git-ignored; daybook.db lives here
   - Inside a group the cards pass `note_card(note, show_type=false)`: the
     heading already names the type, and repeating the tag on every card
     was the noisiest thing on the page.
+- **Every form in the app is the same `.compose` layout.** Composing a
+  note was stripped back first (no page heading, no field labels, no
+  boxes) and the result was then generalised to tasks, people, skills and
+  note types, because one clean form next to five boxy ones just looks
+  unfinished. The vocabulary is documented above the rules in
+  `style.css`: `.compose` (the form, capped at `70ch` and centred),
+  `.compose-title` (the one big borderless field — **its placeholder is
+  the page heading**, which is why none of these templates has an `<h2>`),
+  `.compose-meta` holding `.compose-pill`s (one rounded control each, with
+  an optional faint `.compose-pill-label` prefix) or a joined
+  `.compose-pills` group, `.compose-area` (the plain-textarea writing
+  surface), `.compose-foot` (secondary labelled fields + Save/Cancel), and
+  `.compose-extra` (a block *after* the form).
+  - `.compose` is excluded from the generic form-input chrome the same way
+    `.filter-bar` is — `form:not(.filter-bar):not(.search-form):not(.compose)`.
+    That rule is an element plus two `:not()`s, so it **outranks a
+    `.compose-pill` class selector** and would put the ring and hard edge
+    back on every pill; excluding is cleaner than escalating. Fields in a
+    `.compose-foot` still get the ring, via the `.form-row` selectors.
+  - `.compose-area` is `resize: none` + `overflow: hidden`, grown to fit
+    by `initComposeAreas`/`growComposeArea` in `app.js`. The drag handle
+    was the last visual tell that it's a form field; the note editor
+    doesn't have one because it's a contenteditable div.
+  - Anything in `.compose-extra` that is its own `<form>` has to be
+    *outside* the compose form. Nested forms are invalid HTML and the
+    browser silently drops the inner one, so the button renders and then
+    does nothing — `tests/test_deletes.py` scans for it.
+  - An empty optional date chip renders `"Pick a date"` server-side,
+    matching what `date-chip.js`'s `label("")` produces, so the first
+    paint doesn't flash a different word.
+- **Everything can be deleted, and deleting a tag never deletes a note.**
+  `delete_person`/`delete_topic`/`delete_skill` are plain DELETEs that
+  lean on `ON DELETE CASCADE` on the join tables (`note_person`,
+  `note_topic`, `skill_evidence`, `skill_level_history`): the note is the
+  record, the tag is only an index into it. **`delete_project` is the
+  exception** — `task.project_id`, `log_entry.project_id` and
+  `win.project_id` reference `project(id)` with *no* ON DELETE action, so
+  with `PRAGMA foreign_keys` on the DELETE would simply fail; it nulls
+  those three first, which is also the behaviour you want. Note types are
+  different again: `note.note_type_id` is NOT NULL with nowhere to move an
+  orphan, so `settings.note_type_delete_view` refuses while
+  `notes_using_note_type` is non-zero and points at Archive instead.
+  The control lives wherever you edit the thing — in the `.compose-extra`
+  of its form for people/tasks/skills/note types, and at the foot of the
+  *detail* page for projects and topics, which have no edit form at all.
 - **Markdown rendering** happens only at display time (`| markdown` Jinja
   filter in templates); the stored `body_markdown` is always the raw
   Markdown source, never pre-rendered HTML.
@@ -161,6 +206,19 @@ data/                    # git-ignored; daybook.db lives here
 - **FTS5 search index** (`note_fts`) is an external-content table kept in
   sync by SQL triggers in `schema.sql` (`note_ai`/`note_ad`/`note_au`) —
   don't write to `note_fts` directly; it follows `note` automatically.
+- **The search box lives in the sidebar, above the nav** — not on top of
+  every page, where it used to sit. It's a way of *getting* somewhere,
+  which is what the rest of that column is for, and on a screen you're
+  writing on (a note, a task) a search field was pure noise. It's one
+  rounded field with the magnifier and a `Ctrl K` badge absolutely
+  positioned *over* it (padding reserves their space), so the input keeps
+  its full hit area; the badge is `pointer-events: none` and fades out on
+  focus. The dropdown is anchored to the box but a fixed 320px wide, so it
+  overhangs the 220px column rather than squeezing a note title into it —
+  which is why `.search-panel` carries a real shadow. Below the 760px
+  breakpoint the sidebar is full width and the panel goes back to 100%.
+  The compose screens used to blank an overridable `{% block topbar %}` to
+  hide it; that block is gone, and so is the need for it.
 - **The search box is a typeahead over everything, not just notes.**
   Typing fires `GET /search/suggest` (htmx, 180ms debounce) and drops a
   grouped panel under the box — notes, tasks, people, projects, topics —
@@ -200,6 +258,11 @@ data/                    # git-ignored; daybook.db lives here
   Topics' says "Knowledge Bank". Form pages deliberately don't use it --
   they already have a Cancel button, which is the same escape hatch with a
   clearer meaning mid-edit. `tests/test_back_links.py` pins all five.
+- **`--danger` is the only red in the palette** (light `#b03a2e`, dark
+  `#e5705f`), added for the `.compose-danger` delete links. `.btn-danger`
+  is still only accent-coloured, which read fine while the one destructive
+  action was "Archive"; a bare "Delete this" link needs to go red on hover
+  to say what it is.
 - **Note type colors** are a fixed palette (`clay`, `sage`, `ochre`,
   `dustyblue`, `plum`, `slate`, `moss`, `rose`), each with a CSS class in
   `style.css` (`.tag-<color>`). Add new colors there before using them in
@@ -737,11 +800,6 @@ data/                    # git-ignored; daybook.db lives here
   spray fifteen Person rows into the database on one careless save.
   `notes.new_view`'s prefilled date goes through `_safe_iso_date`, since a
   malformed value makes `<input type="date">` render blank.
-- **Keyboard shortcuts** (`static/app.js`): `n` new note, `t` Tasks
-  (Today view, whose quick-add input has `autofocus`), `/` focuses
-  `#global-search`. Guarded against firing while typing in a field or with
-  a modifier key held — don't add a new single-key shortcut without the
-  same guard.
 - **Reading a note is its own layout, not a generic page.** Notes are the
   core of the app but were the one surface with no container: body text ran
   the full 920px of `.main` while lesser things (a task row, a stat tile)
@@ -991,9 +1049,14 @@ data/                    # git-ignored; daybook.db lives here
   `onsubmit=""`), attach it explicitly via `window.fnName = fnName`.
 - **Keyboard shortcuts** (`static/app.js`): `n` new note, `t` Tasks
   (Today view, whose quick-add input has `autofocus`), `/` focuses
-  `#global-search`. Guarded against firing while typing in a field or with
-  a modifier key held — don't add a new single-key shortcut without the
-  same guard.
+  `#global-search`, and `Ctrl`/`Cmd+K` does the same. The single-key ones
+  are guarded against firing while typing in a field or with a modifier
+  key held — don't add a new single-key shortcut without the same guard.
+  `Ctrl/Cmd+K` is the exception and has its own listener, because it
+  *wants* a modifier and should work while you're typing somewhere else;
+  it bails on `event.defaultPrevented`, since the note editor binds the
+  same chord to "insert link" on the editor itself and that handler runs
+  at the target before this one sees the event bubble up.
 - **The note type `<select>` no longer touches the body.** It used to
   `hx-get` the type's template into the editor on every `change` — which
   meant picking a different type after you'd already started writing wiped

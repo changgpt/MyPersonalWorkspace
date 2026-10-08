@@ -1,38 +1,55 @@
 {% extends "base.html" %}
-{% block title %}{{ 'Edit skill' if skill else 'New skill' }} — FiloFax{% endblock %}
+{% block title %}{{ skill['name'] if skill else 'New skill' }} — FiloFax{% endblock %}
+{# Same compose layout as a note: no page heading, no labels on the
+   primary fields, pills for the settings. See .compose in style.css. #}
 {% block content %}
-<div class="page-header"><h2>{{ 'Edit skill' if skill else 'New skill' }}</h2></div>
-
-<form method="post"
+<form class="compose" method="post"
       action="{{ url_for('skills.update_view', skill_id=skill['id']) if skill else url_for('skills.create_view') }}">
-  <label for="name">Name</label>
-  <input type="text" id="name" name="name" required value="{{ skill['name'] if skill else '' }}">
 
-  <div class="form-row">
-    <div>
-      <label for="category">Category</label>
-      <select id="category" name="category">
+  <input class="compose-title" type="text" id="name" name="name" required
+         placeholder="New skill" autocomplete="off" {{ '' if skill else 'autofocus' }}
+         value="{{ skill['name'] if skill else '' }}">
+
+  <div class="compose-meta">
+    <span class="compose-pill">
+      <span class="compose-pill-label">Category</span>
+      <select id="category" name="category" aria-label="Category">
         {% for c in categories %}
           <option value="{{ c }}" {{ 'selected' if skill and skill['category'] == c }}>{{ c }}</option>
         {% endfor %}
       </select>
-    </div>
-    <div>
-      <label for="level">Level (1–5)</label>
-      <select id="level" name="level">
+    </span>
+    <span class="compose-pill">
+      <span class="compose-pill-label">Level</span>
+      <select id="level" name="level" aria-label="Level, 1 to 5">
         {% for lvl in [1, 2, 3, 4, 5] %}
-          <option value="{{ lvl }}" {{ 'selected' if skill and skill['level'] == lvl }}>{{ lvl }}</option>
+          <option value="{{ lvl }}" {{ 'selected' if skill and skill['level'] == lvl }}>{{ lvl }} of 5</option>
         {% endfor %}
       </select>
+    </span>
+  </div>
+
+  <textarea class="compose-area" id="notes" name="notes"
+            placeholder="What have you done with it?">{{ skill['notes'] if skill else '' }}</textarea>
+
+  <div class="compose-foot">
+    <div class="compose-actions">
+      <button class="btn" type="submit">Save</button>
+      <a class="btn btn-secondary" href="{{ url_for('skills.detail_view', skill_id=skill['id']) if skill else url_for('skills.list_view') }}">Cancel</a>
     </div>
   </div>
-
-  <label for="notes">Notes</label>
-  <textarea id="notes" name="notes" style="min-height:100px;">{{ skill['notes'] if skill else '' }}</textarea>
-
-  <div style="margin-top: 24px;">
-    <button class="btn" type="submit">Save</button>
-    <a class="btn btn-secondary" href="{{ url_for('skills.list_view') }}">Cancel</a>
-  </div>
 </form>
+
+{% if skill %}
+{# Outside the form above, not in its .compose-foot: this is a <form> of
+   its own and HTML doesn't allow nesting one inside another (the browser
+   silently drops the inner one, so the button would simply do nothing). #}
+<div class="compose compose-extra">
+  <form class="compose-danger" method="post"
+        action="{{ url_for('skills.delete_view', skill_id=skill['id']) }}"
+        onsubmit="return confirm('Delete this skill? Its level history and the skill tags on your notes and tasks go too. This cannot be undone.')">
+    <button type="submit">Delete this skill</button>
+  </form>
+</div>
+{% endif %}
 {% endblock %}

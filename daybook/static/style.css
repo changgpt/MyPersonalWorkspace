@@ -18,6 +18,12 @@
   --success: #6b8068;
   --success-soft: #e1e8de;
 
+  /* The palette had no red at all -- .btn-danger is only accent-coloured,
+     which read fine while the only destructive action was "Archive". A
+     bare "Delete this" link needs to go red on hover to say what it is,
+     so the one red in the app lives here (and in the dark block). */
+  --danger: #b03a2e;
+
   --radius: 10px;
   --radius-sm: 7px;
   --shadow-sm: 0 1px 2px rgba(42, 39, 36, 0.06);
@@ -53,6 +59,8 @@
 
   --success: #8fb08a;
   --success-soft: #33402f;
+
+  --danger: #e5705f;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
 
@@ -221,21 +229,77 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
 
 .page-header h2 { margin: 0; font-size: 19px; }
 
-.search-form { margin-bottom: 24px; }
-/* Wide enough not to look stranded now the page is fluid, but capped --
-   search is a secondary action and shouldn't dominate every page. */
-.search-box { position: relative; width: 100%; max-width: 420px; }
-.search-form input[type="text"] { width: 100%; }
+/* --- Sidebar search -----------------------------------------------------
+   One faint rounded field at the top of the nav column, with the magnifier
+   inside it and a Ctrl K hint on the right. Both sit *over* the input
+   (absolutely positioned) rather than beside it in a flex row, so the
+   input keeps its full hit area and native caret behaviour -- padding
+   reserves the space they occupy. */
+.search-form { margin: 0 0 18px; }
+.search-box { position: relative; }
+
+.search-form input[type="text"] {
+  width: 100%;
+  padding: 7px 46px 7px 30px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  box-shadow: 0 0 0 1px rgba(42, 39, 36, 0.045);
+  font-size: 13px;
+  color: var(--text);
+}
+.search-form input[type="text"]::placeholder { color: var(--text-faint); opacity: 1; }
+.search-form input[type="text"]:focus {
+  outline: none;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--accent-soft), 0 1px 3px rgba(42, 39, 36, 0.07);
+}
+
+.search-icon {
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  display: flex;
+  transform: translateY(-50%);
+  color: var(--text-faint);
+  pointer-events: none;
+}
+
+/* A hint, not a control: it only says the shortcut exists, so it mustn't
+   swallow a click aimed at the input underneath it. */
+.search-hint {
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  transform: translateY(-50%);
+  padding: 2px 5px;
+  border-radius: 5px;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px rgba(42, 39, 36, 0.07);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--text-faint);
+  pointer-events: none;
+}
+.search-form input[type="text"]:focus ~ .search-hint { opacity: 0; }
+
+:root[data-theme="dark"] .search-form input[type="text"],
+:root[data-theme="dark"] .search-hint { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06); }
 
 /* --- Search typeahead ---------------------------------------------------
    The dropdown is whatever search/_suggestions.html rendered; an empty
    query renders nothing, and this :empty rule is what makes "no output"
    equal "closed", so there's no open/closed state to keep in sync. */
+/* Anchored to the box's left edge but far wider than it: the sidebar is
+   220px and a note title needs more room than that. It overhangs the main
+   column, which is why the panel carries a real shadow. */
 .search-suggestions {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  right: 0;
+  width: 320px;
+  max-width: calc(100vw - 32px);
   z-index: 45;
 }
 .search-suggestions:empty { display: none; }
@@ -971,7 +1035,10 @@ footer.app-footer {
   .board, .today-board { grid-template-columns: repeat(2, 1fr); }
   .card-grid { grid-template-columns: 1fr; }
   .form-row { flex-direction: column; }
-  .search-form input[type="text"] { width: 100%; }
+  /* The sidebar is the full width here, so the dropdown can be too -- and
+     the 320px desktop overhang would hang off the right edge. */
+  .search-form { margin-bottom: 12px; }
+  .search-suggestions { width: 100%; }
   .page-header { flex-wrap: wrap; gap: 8px; }
 }
 
@@ -1282,13 +1349,28 @@ footer.app-footer {
    _checklists.html for why it can't sit in the quick-add bar). */
 .today-controls { display: flex; justify-content: flex-end; margin-bottom: -6px; }
 
-/* --- Composing a note: chrome-less -----------------------------------
-   No page heading, no field labels, no boxes around the two things that
-   matter. The title's placeholder *is* the page heading, which is why
-   there's no <h2> above it. Modelled on the reference the user sent. */
-.note-compose { max-width: 70ch; margin: 0 auto; }
+/* --- The compose layout: every form in the app ----------------------
+   No page heading, no field labels, no boxes. The title input's
+   placeholder *is* the page heading ("New note", "New task", ...), which
+   is why none of these templates has an <h2>. Written for notes first and
+   then generalised, because one clean form next to five boxy ones just
+   looks unfinished. Any new form should wear these classes rather than
+   plain labels + inputs:
+     .compose            the <form>
+     .compose-title      the one big borderless field (name/title)
+     .compose-meta       the row of pills under it
+     .compose-pills      a joined group of selects/inputs inside that row
+     .compose-pill       a standalone pill in that row
+     .compose-pill-label a faint name prefixed inside one pill
+     .compose-area       the plain-textarea writing surface
+     .compose-foot       secondary fields + the Save/Cancel actions
+     .compose-extra      a block *after* the form (own <form>s live here)
+     .compose-danger     the text-only destructive action, in .compose-extra
+   `.compose-body` and the format bar are note-specific (a rich editor);
+   other forms use a plain .compose-area textarea. */
+.compose { max-width: 70ch; margin: 0 auto; }
 
-input.note-compose-title {
+input.compose-title {
   width: 100%;
   border: none;
   background: none;
@@ -1301,11 +1383,11 @@ input.note-compose-title {
 }
 /* The placeholder has to be legible-but-quiet: it's standing in for a
    heading, so it can't be as faint as a normal input's hint. */
-input.note-compose-title::placeholder { color: var(--text-faint); opacity: 1; }
-input.note-compose-title:focus { outline: none; }
+input.compose-title::placeholder { color: var(--text-faint); opacity: 1; }
+input.compose-title:focus { outline: none; }
 
 /* One pill row: type, date, import, formatting. */
-.note-meta {
+.compose-meta {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1314,7 +1396,7 @@ input.note-compose-title:focus { outline: none; }
 }
 /* Type and date share a single pill so they read as one control group,
    the way the reference pairs its calendar and people chips. */
-.note-meta-pills {
+.compose-pills {
   display: flex;
   align-items: center;
   border: 1px solid var(--border);
@@ -1322,11 +1404,11 @@ input.note-compose-title:focus { outline: none; }
   background: var(--surface);
   overflow: hidden;
 }
-.note-meta-pills > * + * { border-left: 1px solid var(--border); }
+.compose-pills > * + * { border-left: 1px solid var(--border); }
 /* Beats the generic form-control rules by being more specific, rather
    than by !important. */
-.note-meta-pills .select-button,
-.note-meta .note-meta-pills input[type="date"] {
+.compose-pills .select-button,
+.compose-meta .compose-pills input[type="date"] {
   border: none;
   border-radius: 0;
   background: none;
@@ -1336,11 +1418,11 @@ input.note-compose-title:focus { outline: none; }
   font-size: 13px;
   color: var(--text-muted);
 }
-.note-meta-pills .select-button:hover,
-.note-meta .note-meta-pills input[type="date"]:hover { background: var(--surface-sunken); }
-.note-meta-pills .select-button { gap: 7px; }
-.note-meta-pills .select-caret { width: 5px; height: 5px; }
-.note-meta .note-meta-pills input[type="date"]:focus { outline: none; background: var(--surface-sunken); }
+.compose-pills .select-button:hover,
+.compose-meta .compose-pills input[type="date"]:hover { background: var(--surface-sunken); }
+.compose-pills .select-button { gap: 7px; }
+.compose-pills .select-caret { width: 5px; height: 5px; }
+.compose-meta .compose-pills input[type="date"]:focus { outline: none; background: var(--surface-sunken); }
 
 /* Round icon-only button, used for file import and the formatting toggle.
    A <label> and a <button> both wear it, so it can't rely on either. */
@@ -1365,12 +1447,12 @@ input.note-compose-title:focus { outline: none; }
   padding: 0;
 }
 .icon-btn:hover { color: var(--text); border-color: var(--accent-soft); text-decoration: none; }
-.note-format-toggle[aria-expanded="true"] {
+.compose-format-toggle[aria-expanded="true"] {
   color: var(--accent-hover);
   border-color: var(--accent);
   background: var(--accent-soft);
 }
-.note-file-name { margin-top: 0; font-size: 12px; }
+.compose-file-name { margin-top: 0; font-size: 12px; }
 
 /* Off-screen but still focusable and still submitted -- the file input is
    driven by its <label>, so it must not be display:none (that would drop
@@ -1388,35 +1470,35 @@ input.note-compose-title:focus { outline: none; }
 }
 
 /* The formatting bar, revealed by the toggle. */
-.note-format-bar {
+.compose-format-bar {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
   padding: 10px 12px;
   margin-bottom: 14px;
 }
-.note-format-bar .md-toolbar { margin: 0; }
-.note-format-hint { margin: 8px 0 0; font-size: 11.5px; }
+.compose-format-bar .md-toolbar { margin: 0; }
+.compose-format-hint { margin: 8px 0 0; font-size: 11.5px; }
 
 /* The body: a writing surface, not a form field. */
-.rich-editor.note-compose-body {
+.rich-editor.compose-body {
   border: none;
   background: none;
   padding: 0;
   min-height: 46vh;
   margin-top: 0;
 }
-.rich-editor.note-compose-body:focus { outline: none; }
+.rich-editor.compose-body:focus { outline: none; }
 
 /* Everything you do *after* writing, separated by space rather than a rule. */
-.note-compose-foot { margin-top: 28px; }
-.note-compose-foot .form-row { margin-top: 10px; }
-.note-compose-foot label { font-size: 12px; }
-.note-compose-actions { margin-top: 22px; }
+.compose-foot { margin-top: 28px; }
+.compose-foot .form-row { margin-top: 10px; }
+.compose-foot label { font-size: 12px; }
+.compose-actions { margin-top: 22px; }
 
 
 /* --- The same quiet treatment, applied everywhere ---------------------
-   Composing a note was stripped back first (see .note-compose); this is
+   Composing a note was stripped back first (see .compose); this is
    that pass carried across the rest of the app, because one clean page
    next to nine boxy ones just looks inconsistent. */
 
@@ -1449,18 +1531,24 @@ input.note-compose-title:focus { outline: none; }
   box-shadow: 0 1px 2px rgba(42, 39, 36, 0.045), 0 0 0 1px rgba(42, 39, 36, 0.03);
 }
 
-/* Inputs inside a real form: keep the affordance, drop the hard edge. */
-form:not(.filter-bar):not(.search-form) input[type="text"],
-form:not(.filter-bar):not(.search-form) input[type="date"],
-form:not(.filter-bar):not(.search-form) textarea,
+/* Inputs inside a real form: keep the affordance, drop the hard edge.
+   .compose is excluded for the same reason .filter-bar is -- a compose
+   screen's controls are pills and writing surfaces that define their own
+   chrome, and this rule is specific enough (an element plus two :not()s)
+   to outrank a .compose-pill class selector and put the ring back. The
+   secondary fields in a .compose-foot still get it, via the .form-row
+   selectors below. */
+form:not(.filter-bar):not(.search-form):not(.compose) input[type="text"],
+form:not(.filter-bar):not(.search-form):not(.compose) input[type="date"],
+form:not(.filter-bar):not(.search-form):not(.compose) textarea,
 .form-row input[type="text"],
 .form-row input[type="date"] {
   border-color: transparent;
   box-shadow: 0 0 0 1px rgba(42, 39, 36, 0.055);
 }
-form:not(.filter-bar):not(.search-form) input[type="text"]:focus,
-form:not(.filter-bar):not(.search-form) input[type="date"]:focus,
-form:not(.filter-bar):not(.search-form) textarea:focus,
+form:not(.filter-bar):not(.search-form):not(.compose) input[type="text"]:focus,
+form:not(.filter-bar):not(.search-form):not(.compose) input[type="date"]:focus,
+form:not(.filter-bar):not(.search-form):not(.compose) textarea:focus,
 .form-row input[type="text"]:focus {
   box-shadow: 0 0 0 1px var(--accent);
 }
@@ -1480,9 +1568,9 @@ form:not(.filter-bar):not(.search-form) textarea:focus,
 :root[data-theme="dark"] .filter-bar input[type="date"],
 :root[data-theme="dark"] .filter-bar input[type="text"],
 :root[data-theme="dark"] .filter-bar .btn-secondary,
-:root[data-theme="dark"] form:not(.filter-bar):not(.search-form) input[type="text"],
-:root[data-theme="dark"] form:not(.filter-bar):not(.search-form) input[type="date"],
-:root[data-theme="dark"] form:not(.filter-bar):not(.search-form) textarea,
+:root[data-theme="dark"] form:not(.filter-bar):not(.search-form):not(.compose) input[type="text"],
+:root[data-theme="dark"] form:not(.filter-bar):not(.search-form):not(.compose) input[type="date"],
+:root[data-theme="dark"] form:not(.filter-bar):not(.search-form):not(.compose) textarea,
 :root[data-theme="dark"] .form-row input[type="text"],
 :root[data-theme="dark"] .form-row input[type="date"] {
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.075);
@@ -1529,3 +1617,102 @@ form:not(.filter-bar):not(.search-form) textarea:focus,
    compact control sizing; this just stops it inheriting the bar's own
    bottom margin inside a header that already has one. */
 .page-header .inline-add { margin-bottom: 0; }
+
+/* --- Compose layout, shared bits ------------------------------------- */
+/* A standalone pill in the meta row (one control, not a joined group). */
+.compose-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px rgba(42, 39, 36, 0.045);
+  overflow: hidden;
+}
+.compose-pill .select-button,
+.compose-pill input[type="date"],
+.compose-pill input[type="text"] {
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  padding: 6px 12px;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.compose-pill .select-button:hover { background: var(--surface-sunken); }
+.compose-pill .select-caret { width: 5px; height: 5px; }
+/* A dark ring is invisible on a dark surface -- same flip the cards and
+   filter bars make further up. */
+:root[data-theme="dark"] .compose-pill { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.075); }
+/* A faint prefix inside a pill, so a bare value has a name without a
+   <label> above it ("Priority  medium"). */
+.compose-pill-label {
+  padding: 6px 2px 6px 12px;
+  font-size: 12px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+.compose-pill-label + * { padding-left: 6px; }
+
+/* The plain-textarea equivalent of the note editor: a writing surface,
+   not a form field. */
+.compose-area {
+  width: 100%;
+  border: none;
+  background: none;
+  box-shadow: none;
+  padding: 0;
+  min-height: 24vh;
+  font-family: inherit;
+  font-size: var(--ui-size);
+  line-height: 1.6;
+  color: var(--text);
+  overflow: hidden;
+  /* No drag handle: it's the one remaining visual tell that this is a form
+     field rather than a page you're writing on. app.js grows the box to
+     fit its content instead, which is what the note editor does for free
+     by being a contenteditable div. */
+  resize: none;
+}
+/* The note-type template editor has its toolbar directly above the
+   writing surface, with no pill row between them. */
+.md-toolbar + .compose-area { margin-top: 14px; }
+.compose-area::placeholder { color: var(--text-faint); }
+.compose-area:focus { outline: none; }
+/* The one surface that really is editing Markdown *source* (a note-type
+   template), so it keeps the monospace face the old textareas had. */
+.compose-area-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+/* Two .compose-danger forms can sit side by side (Archive + Delete). */
+.compose-danger + .compose-danger { margin-top: 10px; }
+
+/* Secondary fields at the foot of a compose form: still labelled (they're
+   genuinely secondary and need names), just quieter. */
+.compose-foot label { font-size: 12px; color: var(--text-faint); font-weight: 400; }
+.compose-foot .form-row { margin-top: 10px; }
+
+/* The destructive action lives at the very bottom, visually separated and
+   text-only -- a red button at the top of a form is an accident waiting
+   to happen. */
+.compose-danger { margin-top: 26px; }
+.compose-danger button {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.compose-danger button:hover { color: var(--danger); text-decoration: underline; }
+
+/* A block *after* the compose form, on the same measure: things that
+   aren't part of saving the thing (tagging a skill on a task, deleting
+   it). A separate element rather than more .compose-foot because it holds
+   its own <form>s, which can't be nested inside one. */
+.compose-extra {
+  margin-top: 34px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.compose-extra h3 { margin-top: 0; }

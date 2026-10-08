@@ -10,7 +10,6 @@
 {% if project['description'] %}<p>{{ project['description'] }}</p>{% endif %}
 
 <h3>Tasks</h3>
-<p class="flash-hint">Wins linked to this project will appear here in a later phase.</p>
 {% if tasks %}
 <ul class="task-checklist">
   {% for task in tasks %}
@@ -29,4 +28,15 @@
 {% else %}
   <div class="empty-state">No notes tag this project yet.</div>
 {% endif %}
+
+{# Projects have no edit page -- nothing about one is editable yet (the name comes from tagging a note) -- so the destructive action
+   lives here rather than on a form. Same .compose-danger treatment
+   as everywhere else. #}
+<div class="compose-extra">
+  <form class="compose-danger" method="post"
+        action="{{ url_for('projects.delete_view', project_id=project['id']) }}"
+        onsubmit="return confirm('Delete this project? Its notes stay and its tasks stay (they just stop being filed under it). This cannot be undone.')">
+    <button type="submit">Delete this project</button>
+  </form>
+</div>
 {% endblock %}

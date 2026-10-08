@@ -141,6 +141,26 @@ def update_note_type(note_type_id, name, color, template_markdown):
     db.commit()
 
 
+def notes_using_note_type(note_type_id):
+    db = get_db()
+    return db.execute(
+        "SELECT COUNT(*) AS n FROM note WHERE note_type_id = ?", (note_type_id,)
+    ).fetchone()["n"]
+
+
+def delete_note_type(note_type_id):
+    """Only ever called once `notes_using_note_type` says it's unused.
+
+    `note.note_type_id` is NOT NULL and references `note_type(id)` with no
+    ON DELETE action -- there is no sensible type to move an orphaned note
+    to, which is exactly why archiving exists. The caller checks; this
+    stays a plain DELETE so the FK remains the backstop.
+    """
+    db = get_db()
+    db.execute("DELETE FROM note_type WHERE id = ?", (note_type_id,))
+    db.commit()
+
+
 def set_note_type_active(note_type_id, is_active):
     db = get_db()
     db.execute(
@@ -200,6 +220,19 @@ def update_person(person_id, name, role, team, how_met, context, last_contacted_
     db.commit()
 
 
+def delete_person(person_id):
+    """Forget a person entirely.
+
+    `note_person` and `win_person` are both `ON DELETE CASCADE`, so the
+    notes they were tagged on survive and simply lose the tag -- which is
+    the right answer: the note is the record, the tag is only an index
+    into it. Same for `delete_topic` below.
+    """
+    db = get_db()
+    db.execute("DELETE FROM person WHERE id = ?", (person_id,))
+    db.commit()
+
+
 def list_projects():
     db = get_db()
     return db.execute("SELECT * FROM project ORDER BY name").fetchall()
@@ -210,6 +243,24 @@ def get_project(project_id):
     return db.execute("SELECT * FROM project WHERE id = ?", (project_id,)).fetchone()
 
 
+def delete_project(project_id):
+    """Delete a project, un-filing anything that pointed at it.
+
+    `note_project` cascades, but `task.project_id` (and `log_entry`/`win`,
+    whose UI is gone but whose rows are still here) only *reference*
+    `project(id)` with no ON DELETE action -- with `PRAGMA foreign_keys`
+    on, the DELETE would simply fail. Nulling those columns first is also
+    the behaviour you want: a task doesn't stop existing because the
+    project it was filed under did.
+    """
+    db = get_db()
+    db.execute("UPDATE task SET project_id = NULL WHERE project_id = ?", (project_id,))
+    db.execute("UPDATE log_entry SET project_id = NULL WHERE project_id = ?", (project_id,))
+    db.execute("UPDATE win SET project_id = NULL WHERE project_id = ?", (project_id,))
+    db.execute("DELETE FROM project WHERE id = ?", (project_id,))
+    db.commit()
+
+
 def list_topics():
     db = get_db()
     return db.execute("SELECT * FROM topic ORDER BY name").fetchall()
@@ -218,6 +269,12 @@ def list_topics():
 def get_topic(topic_id):
     db = get_db()
     return db.execute("SELECT * FROM topic WHERE id = ?", (topic_id,)).fetchone()
+
+
+def delete_topic(topic_id):
+    db = get_db()
+    db.execute("DELETE FROM topic WHERE id = ?", (topic_id,))
+    db.commit()
 
 
 # --- Notes ---------------------------------------------------------------
@@ -755,6 +812,18 @@ def update_skill(skill_id, name, category, notes, level):
 def get_skill(skill_id):
     db = get_db()
     return db.execute("SELECT * FROM skill WHERE id = ?", (skill_id,)).fetchone()
+
+
+def delete_skill(skill_id):
+    """Delete a skill with its level history and evidence links.
+
+    Both child tables are `ON DELETE CASCADE`. Only the *links* go --
+    `skill_evidence` holds an `entity_type`/`entity_id` pointer, so the
+    notes and tasks it pointed at are untouched.
+    """
+    db = get_db()
+    db.execute("DELETE FROM skill WHERE id = ?", (skill_id,))
+    db.commit()
 
 
 def list_skills():

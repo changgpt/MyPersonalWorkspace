@@ -1,40 +1,66 @@
 {% extends "base.html" %}
-{% block title %}Edit {{ person['name'] }} — FiloFax{% endblock %}
+{% block title %}{{ person['name'] }} — FiloFax{% endblock %}
+{# Same compose layout as a note. A person has no "body", so the one
+   free-text field (Useful context) takes that slot and the rest of the
+   CRM profile sits in the quieter foot. #}
 {% block content %}
-<div class="page-header"><h2>Edit {{ person['name'] }}</h2></div>
+<form class="compose" method="post" action="{{ url_for('people.update_view', person_id=person['id']) }}">
 
-<form method="post" action="{{ url_for('people.update_view', person_id=person['id']) }}">
-  <label for="name">Name</label>
-  <input type="text" id="name" name="name" required value="{{ person['name'] }}">
+  <input class="compose-title" type="text" id="name" name="name" required
+         placeholder="Their name" autocomplete="off" value="{{ person['name'] }}">
 
-  <div class="form-row">
-    <div>
-      <label for="role">Role</label>
-      <input type="text" id="role" name="role" value="{{ person['role'] or '' }}">
-    </div>
-    <div>
-      <label for="team">Team</label>
-      <input type="text" id="team" name="team" value="{{ person['team'] or '' }}">
-    </div>
-    <div>
-      <label for="last_contacted_date">Last contacted</label>
-      <input type="date" id="last_contacted_date" name="last_contacted_date"
-             value="{{ person['last_contacted_date'] or '' }}">
-    </div>
+  <div class="compose-meta">
+    <span class="compose-pill">
+      <span class="compose-pill-label">Role</span>
+      <input type="text" id="role" name="role" size="16" placeholder="—"
+             autocomplete="off" value="{{ person['role'] or '' }}">
+    </span>
+    <span class="compose-pill">
+      <span class="compose-pill-label">Team</span>
+      <input type="text" id="team" name="team" size="16" placeholder="—"
+             autocomplete="off" value="{{ person['team'] or '' }}">
+    </span>
+    {# Same chip as a note's date, so "Today"/"1 Dec" reads the same
+       everywhere. Optional here, so the empty label matches what
+       date-chip.js renders for an empty value and nothing flashes. #}
+    <span class="compose-pill date-chip" data-date-chip>
+      <span class="compose-pill-label">Last spoke</span>
+      <button type="button" class="date-chip-label" data-date-chip-label
+              aria-label="Change last contacted date">{{ person['last_contacted_date'] | human_date if person['last_contacted_date'] else 'Pick a date' }}</button>
+      <input type="date" id="last_contacted_date" name="last_contacted_date" tabindex="-1"
+             aria-label="Last contacted" value="{{ person['last_contacted_date'] or '' }}">
+    </span>
   </div>
 
-  <label for="how_met">How you met</label>
-  <input type="text" id="how_met" name="how_met" value="{{ person['how_met'] or '' }}">
+  <textarea class="compose-area" id="context" name="context"
+            placeholder="Useful context — what they work on, what you talked about…">{{ person['notes'] or '' }}</textarea>
 
-  <label for="context">Useful context</label>
-  <textarea id="context" name="context" style="min-height:100px;">{{ person['notes'] or '' }}</textarea>
+  <div class="compose-foot">
+    <div class="form-row">
+      <div>
+        <label for="how_met">How you met</label>
+        <input type="text" id="how_met" name="how_met" value="{{ person['how_met'] or '' }}">
+      </div>
+      <div>
+        <label for="follow_up">Follow up</label>
+        <input type="text" id="follow_up" name="follow_up" value="{{ person['follow_up'] or '' }}">
+      </div>
+    </div>
 
-  <label for="follow_up">Follow up</label>
-  <textarea id="follow_up" name="follow_up" style="min-height:80px;">{{ person['follow_up'] or '' }}</textarea>
-
-  <div style="margin-top: 24px;">
-    <button class="btn" type="submit">Save</button>
-    <a class="btn btn-secondary" href="{{ url_for('people.detail_view', person_id=person['id']) }}">Cancel</a>
+    <div class="compose-actions">
+      <button class="btn" type="submit">Save</button>
+      <a class="btn btn-secondary" href="{{ url_for('people.detail_view', person_id=person['id']) }}">Cancel</a>
+    </div>
   </div>
 </form>
+
+{# Its own <form>, so outside the one above -- nested forms are invalid
+   and the browser drops the inner one silently. #}
+<div class="compose compose-extra">
+  <form class="compose-danger" method="post"
+        action="{{ url_for('people.delete_view', person_id=person['id']) }}"
+        onsubmit="return confirm('Delete this person? Their notes stay, but lose the tag. This cannot be undone.')">
+    <button type="submit">Delete this person</button>
+  </form>
+</div>
 {% endblock %}

@@ -1,37 +1,79 @@
 {% extends "base.html" %}
 {% block title %}{{ 'Edit note type' if note_type else 'New note type' }} — FiloFax{% endblock %}
+{# Same compose layout as a note. The template body is the one place in
+   the app that still edits *raw* Markdown in a textarea (it's a template,
+   so the `- [ ]`/`**` source is the thing you're editing) -- hence the
+   always-visible .md-toolbar, which editor-toolbar.js drives. #}
 {% block content %}
-<div class="page-header"><h2>{{ 'Edit note type' if note_type else 'New note type' }}</h2></div>
-
-<form method="post"
+<form class="compose" method="post"
       action="{{ url_for('settings.note_type_update_view', note_type_id=note_type['id']) if note_type else url_for('settings.note_type_create_view') }}">
-  <label for="name">Name</label>
-  <input type="text" id="name" name="name" required value="{{ note_type['name'] if note_type else '' }}">
 
-  <label for="color">Colour</label>
-  <select id="color" name="color">
-    {% for color in colors %}
-      <option value="{{ color }}" {{ 'selected' if note_type and note_type['color'] == color }}>{{ color }}</option>
-    {% endfor %}
-  </select>
+  <input class="compose-title" type="text" id="name" name="name" required
+         placeholder="New note type" autocomplete="off" {{ '' if note_type else 'autofocus' }}
+         value="{{ note_type['name'] if note_type else '' }}">
 
-  <label for="template_markdown">Markdown template</label>
-  <div class="md-toolbar" data-target="template_markdown">
-    <button type="button" data-md-action="bold" title="Bold"><strong>B</strong></button>
-    <button type="button" data-md-action="italic" title="Italic"><em>I</em></button>
-    <button type="button" data-md-action="heading" title="Heading">H</button>
-    <button type="button" data-md-action="bullet" title="Bullet list">• List</button>
-    <button type="button" data-md-action="numbered" title="Numbered list">1. List</button>
-    <button type="button" data-md-action="checkbox" title="Checklist item">☑ Check</button>
-    <button type="button" data-md-action="link" title="Link">Link</button>
-    <button type="button" data-md-action="outdent" title="Outdent (Shift+Tab)">&larr; Indent</button>
-    <button type="button" data-md-action="indent" title="Indent (Tab)">Indent &rarr;</button>
+  <div class="compose-meta">
+    <span class="compose-pill">
+      <span class="compose-pill-label">Colour</span>
+      <select id="color" name="color" aria-label="Colour">
+        {% for color in colors %}
+          <option value="{{ color }}" {{ 'selected' if note_type and note_type['color'] == color }}>{{ color }}</option>
+        {% endfor %}
+      </select>
+    </span>
+    <span class="tag tag-{{ note_type['color'] if note_type else colors[0] }}">{{ note_type['name'] if note_type else 'Preview' }}</span>
   </div>
-  <textarea id="template_markdown" name="template_markdown">{{ note_type['template_markdown'] if note_type else '' }}</textarea>
 
-  <div style="margin-top: 24px;">
-    <button class="btn" type="submit">Save</button>
-    <a class="btn btn-secondary" href="{{ url_for('settings.note_types_view') }}">Cancel</a>
+  <div class="md-toolbar" data-target="template_markdown">
+    <span class="md-group">
+      <button type="button" data-md-action="bold" title="Bold"><strong>B</strong></button>
+      <button type="button" data-md-action="italic" title="Italic"><em>I</em></button>
+      <button type="button" data-md-action="heading" title="Heading">H</button>
+    </span>
+    <span class="md-group">
+      <button type="button" data-md-action="bullet" title="Bullet list">&bull; List</button>
+      <button type="button" data-md-action="numbered" title="Numbered list">1. List</button>
+      <button type="button" data-md-action="checkbox" title="Checklist item">&#9745; Check</button>
+    </span>
+    <span class="md-group">
+      <button type="button" data-md-action="link" title="Link">Link</button>
+      <button type="button" data-md-action="outdent" title="Outdent (Shift+Tab)">&larr;</button>
+      <button type="button" data-md-action="indent" title="Indent (Tab)">&rarr;</button>
+    </span>
+  </div>
+  <textarea class="compose-area compose-area-mono" id="template_markdown" name="template_markdown"
+            placeholder="What every note of this type starts with…">{{ note_type['template_markdown'] if note_type else '' }}</textarea>
+
+  <div class="compose-foot">
+    <div class="compose-actions">
+      <button class="btn" type="submit">Save</button>
+      <a class="btn btn-secondary" href="{{ url_for('settings.note_types_view') }}">Cancel</a>
+    </div>
   </div>
 </form>
+
+{% if note_type %}
+{# Its own <form>s, so outside the one above -- nested forms are invalid
+   and the browser drops the inner one silently. Archive is the normal
+   answer (it hides the type from the picker and leaves its notes alone);
+   Delete only goes through while nothing is filed under it. #}
+<div class="compose compose-extra">
+  {% if note_type['is_active'] %}
+  <form class="compose-danger" method="post"
+        action="{{ url_for('settings.note_type_archive_view', note_type_id=note_type['id']) }}">
+    <button type="submit">Archive this type</button>
+  </form>
+  {% else %}
+  <form class="compose-danger" method="post"
+        action="{{ url_for('settings.note_type_activate_view', note_type_id=note_type['id']) }}">
+    <button type="submit">Restore this type</button>
+  </form>
+  {% endif %}
+  <form class="compose-danger" method="post"
+        action="{{ url_for('settings.note_type_delete_view', note_type_id=note_type['id']) }}"
+        onsubmit="return confirm('Delete this note type? Only possible while no note uses it.')">
+    <button type="submit">Delete this type</button>
+  </form>
+</div>
+{% endif %}
 {% endblock %}

@@ -37,6 +37,47 @@
   <div class="app-shell">
     <aside class="sidebar">
       <h1>FiloFax</h1>
+      {# Search lives in the sidebar, above the nav, rather than on top of
+         every page: it's a way of *getting* somewhere, which is what the
+         rest of this column is for, and on a page you're writing on (a
+         note, a task) a search box was pure noise. The Ctrl K hint is the
+         only affordance telling you it's keyboard-reachable -- app.js
+         binds both / and Ctrl/Cmd+K to it. #}
+      <form class="search-form" action="{{ url_for('search.search_view') }}" method="get" autocomplete="off">
+        <div class="search-box">
+          <span class="search-icon" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                 stroke-width="1.6" stroke-linecap="round">
+              <circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/>
+            </svg>
+          </span>
+          {# Results appear in the dropdown as you type; Enter still goes to
+             the full results page. `from` carries the page the search was run
+             from so that page can offer a Back link -- and when searching
+             *from* the results page, the original origin is preserved rather
+             than overwritten with /search itself. #}
+          <input type="text" id="global-search" name="q" placeholder="Search FiloFax…"
+                 value="{{ request.args.get('q', '') }}"
+                 role="combobox" aria-expanded="false" aria-controls="search-suggestions"
+                 aria-autocomplete="list"
+                 hx-get="{{ url_for('search.suggest_view') }}"
+                 hx-trigger="input changed delay:180ms, focus"
+                 hx-target="#search-suggestions"
+                 hx-swap="innerHTML"
+                 {# htmx sends only the triggering element's own value, so the
+                    origin has to be included explicitly -- without it the
+                    dropdown's "See all results" link loses the Back target. #}
+                 hx-include="[name='from']">
+          <kbd class="search-hint" aria-hidden="true">Ctrl K</kbd>
+          {# On the results page, carry the *validated* origin (search_view's
+             back_url) rather than the raw `from` arg, so a hand-crafted
+             external value can't be reflected back into the form and
+             threaded through the next search. #}
+          <input type="hidden" name="from"
+                 value="{{ back_url if request.endpoint == 'search.search_view' else request.full_path }}">
+          <div class="search-suggestions" id="search-suggestions"></div>
+        </div>
+      </form>
       <nav>
         <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if request.endpoint == 'dashboard.index' }}">{{ nav_icon('dashboard') }}Dashboard</a>
         <a href="{{ url_for('notes.list_view') }}" class="{{ 'active' if request.blueprint == 'notes' }}">{{ nav_icon('notes') }}Notes</a>
@@ -63,36 +104,6 @@
       {# The page fills the window; .main-inner only stops the content
          stretching to absurd widths on a very large monitor. #}
       <div class="main-inner">
-{% block topbar %}
-        {# Results appear in the dropdown as you type; Enter still goes to
-           the full results page. `from` carries the page the search was run
-           from so that page can offer a Back link -- and when searching
-           *from* the results page, the original origin is preserved rather
-           than overwritten with /search itself. #}
-        <form class="search-form" action="{{ url_for('search.search_view') }}" method="get" autocomplete="off">
-          <div class="search-box">
-            <input type="text" id="global-search" name="q" placeholder="Search everything… (/)"
-                   value="{{ request.args.get('q', '') }}"
-                   role="combobox" aria-expanded="false" aria-controls="search-suggestions"
-                   aria-autocomplete="list"
-                   hx-get="{{ url_for('search.suggest_view') }}"
-                   hx-trigger="input changed delay:180ms, focus"
-                   hx-target="#search-suggestions"
-                   hx-swap="innerHTML"
-                   {# htmx sends only the triggering element's own value, so the
-                      origin has to be included explicitly -- without it the
-                      dropdown's "See all results" link loses the Back target. #}
-                   hx-include="[name='from']">
-            {# On the results page, carry the *validated* origin (search_view's
-               back_url) rather than the raw `from` arg, so a hand-crafted
-               external value can't be reflected back into the form and
-               threaded through the next search. #}
-            <input type="hidden" name="from"
-                   value="{{ back_url if request.endpoint == 'search.search_view' else request.full_path }}">
-            <div class="search-suggestions" id="search-suggestions"></div>
-          </div>
-        </form>
-{% endblock %}
         {% block content %}{% endblock %}
       </div>
     </main>

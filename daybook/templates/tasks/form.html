@@ -1,66 +1,80 @@
 {% extends "base.html" %}
-{% block title %}{{ 'Edit task' if task else 'New task' }} — FiloFax{% endblock %}
+{% block title %}{{ task['title'] if task else 'New task' }} — FiloFax{% endblock %}
+{# Same compose layout as a note: no heading, no labels on the primary
+   fields, pills for the settings. See .compose in style.css. #}
 {% block content %}
-<div class="page-header"><h2>{{ 'Edit task' if task else 'New task' }}</h2></div>
+<form class="compose" method="post"
+      action="{{ url_for('tasks.update_view', task_id=task['id'], next=next) if task else url_for('tasks.create_view', next=next) }}">
 
-<form method="post" action="{{ url_for('tasks.update_view', task_id=task['id'], next=next) if task else url_for('tasks.create_view', next=next) }}">
-  <label for="title">Title</label>
-  <input type="text" id="title" name="title" required value="{{ task['title'] if task else '' }}" {{ '' if task else 'autofocus' }}>
+  <input class="compose-title" type="text" id="title" name="title" required
+         placeholder="New task" autocomplete="off" {{ '' if task else 'autofocus' }}
+         value="{{ task['title'] if task else '' }}">
 
-  <label for="description">Description</label>
-  <textarea id="description" name="description" style="min-height:120px;">{{ task['description'] if task else '' }}</textarea>
-
-  <div class="form-row">
-    <div>
-      <label for="priority">Priority</label>
-      <select id="priority" name="priority">
+  <div class="compose-meta">
+    <span class="compose-pill">
+      <span class="compose-pill-label">Priority</span>
+      <select id="priority" name="priority" aria-label="Priority">
         {% for p in priorities %}
           <option value="{{ p }}" {{ 'selected' if task and task['priority'] == p }}>{{ p }}</option>
         {% endfor %}
       </select>
-    </div>
-    <div>
-      <label for="due_date">Due date</label>
-      <input type="date" id="due_date" name="due_date" value="{{ task['due_date'] if task else '' }}">
-    </div>
-    <div>
-      <label for="project_id">Project</label>
-      <select id="project_id" name="project_id">
+    </span>
+    <span class="compose-pill">
+      <span class="compose-pill-label">List</span>
+      <select id="bucket" name="bucket" aria-label="List">
+        {% for b in buckets %}
+          <option value="{{ b }}" {{ 'selected' if (task['bucket'] if task else 'today') == b }}>{{ bucket_labels[b] }}</option>
+        {% endfor %}
+      </select>
+    </span>
+    <span class="compose-pill">
+      <span class="compose-pill-label">Project</span>
+      <select id="project_id" name="project_id" aria-label="Project">
         <option value="">None</option>
         {% for p in projects %}
           <option value="{{ p['id'] }}" {{ 'selected' if task and task['project_id'] == p['id'] }}>{{ p['name'] }}</option>
         {% endfor %}
       </select>
-    </div>
-    <div>
-      <label for="bucket">Bucket</label>
-      <select id="bucket" name="bucket">
-        {% for b in buckets %}
-          <option value="{{ b }}" {{ 'selected' if (task['bucket'] if task else 'today') == b }}>{{ bucket_labels[b] }}</option>
-        {% endfor %}
-      </select>
-    </div>
+    </span>
+    {# Same chip as the note's date, so "Today"/"1 Dec" reads the same
+       everywhere. Optional here, so the empty label is "Pick a date" --
+       which is also what date-chip.js renders for an empty value, so the
+       server-rendered first paint doesn't flash a different word. #}
+    <span class="compose-pill date-chip" data-date-chip>
+      <span class="compose-pill-label">Due</span>
+      <button type="button" class="date-chip-label" data-date-chip-label
+              aria-label="Change due date">{{ task['due_date'] | human_date if task and task['due_date'] else 'Pick a date' }}</button>
+      <input type="date" id="due_date" name="due_date" tabindex="-1" aria-label="Due date"
+             value="{{ task['due_date'] if task else '' }}">
+    </span>
   </div>
 
-  {% if task and task['source_note_id'] %}
-  <p class="flash-hint">Created from a note: <a href="{{ url_for('notes.detail_view', note_id=task['source_note_id']) }}">view note</a></p>
-  {% endif %}
+  <textarea class="compose-area" id="description" name="description"
+            placeholder="Add detail…">{{ task['description'] if task else '' }}</textarea>
 
-  <div style="margin-top: 24px;">
-    <button class="btn" type="submit">Save</button>
-    <a class="btn btn-secondary" href="{{ next }}">Cancel</a>
-    {% if task and task['status'] == 'done' %}
+  <div class="compose-foot">
+    {% if task and task['source_note_id'] %}
+    <p class="card-meta">From a note:
+      <a href="{{ url_for('notes.detail_view', note_id=task['source_note_id']) }}">view it</a></p>
     {% endif %}
+
+    <div class="compose-actions">
+      <button class="btn" type="submit">Save</button>
+      <a class="btn btn-secondary" href="{{ next }}">Cancel</a>
+    </div>
   </div>
 </form>
 
 {% if task %}
-<h3>Skills</h3>
-{% include "skills/_tagger.html" %}
+<div class="compose compose-extra">
+  <h3>Skills</h3>
+  {% include "skills/_tagger.html" %}
 
-<form method="post" action="{{ url_for('tasks.delete_view', task_id=task['id'], next=next) }}"
-      onsubmit="return confirm('Delete this task?')" style="margin-top: 12px;">
-  <button class="btn btn-danger" type="submit">Delete task</button>
-</form>
+  <form class="compose-danger" method="post"
+        action="{{ url_for('tasks.delete_view', task_id=task['id'], next=next) }}"
+        onsubmit="return confirm('Delete this task? This cannot be undone.')">
+    <button type="submit">Delete this task</button>
+  </form>
+</div>
 {% endif %}
 {% endblock %}

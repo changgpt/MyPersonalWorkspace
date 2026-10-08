@@ -1,4 +1,4 @@
-from flask import Blueprint, abort, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
 from .. import db
 
@@ -63,3 +63,13 @@ def update_view(person_id):
         follow_up=form.get("follow_up", "").strip(),
     )
     return redirect(url_for("people.detail_view", person_id=person_id))
+
+
+@bp.route("/<int:person_id>/delete", methods=["POST"])
+def delete_view(person_id):
+    person = db.get_person(person_id)
+    if person is None:
+        abort(404)
+    db.delete_person(person_id)
+    flash(f"Deleted {person['name']}.")
+    return redirect(url_for("people.list_view"))

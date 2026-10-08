@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 {% block title %}{{ note['title'] if note else 'New note' }} — FiloFax{% endblock %}
+{# Writing is the one screen where the search box is pure noise -- nothing
+   here is about finding something. base.html keeps it in an overridable
+   block for exactly this. #}
+{% block topbar %}{% endblock %}
 {% block content %}
 {# Deliberately chrome-less: no page heading, no field labels, no boxes.
    The title *is* the heading (its placeholder says "New note"), and the
@@ -24,8 +28,17 @@
           </option>
         {% endfor %}
       </select>
-      <input type="date" id="event_date" name="event_date" required aria-label="Date"
-             value="{{ note['event_date'] if note else today }}">
+      {# Label + real input, swapped by date-chip.js. The input keeps its
+         name, required and validation -- a browser won't render "Today"
+         inside a date field, so a label is the only way to show it
+         without giving up the native control. #}
+      <span class="date-chip" data-date-chip>
+        <button type="button" class="date-chip-label" data-date-chip-label
+                aria-label="Change date">{{ (note['event_date'] if note else today) | human_date }}</button>
+        <input type="date" id="event_date" name="event_date" required aria-label="Date"
+               tabindex="-1"
+               value="{{ note['event_date'] if note else today }}">
+      </span>
     </div>
 
     {# A <label for> is the whole mechanism -- it opens the native picker

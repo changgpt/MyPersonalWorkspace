@@ -86,3 +86,20 @@ def test_grouped_cards_do_not_repeat_the_type_tag(client, app):
     flat = client.get("/notes?sort=date").get_data(as_text=True)
     # One tag per group heading when grouped, one per card when flat.
     assert grouped.count('class="tag tag-') < flat.count('class="tag tag-')
+
+
+def test_compose_screen_hides_the_search_box(client, app):
+    # Writing is the one screen where search is pure noise.
+    assert "global-search" not in client.get("/notes/new").get_data(as_text=True)
+    # ...and it's still there everywhere else.
+    assert "global-search" in client.get("/notes").get_data(as_text=True)
+
+
+def test_compose_date_renders_as_a_friendly_chip(client, app):
+    body = client.get("/notes/new").get_data(as_text=True)
+    assert "data-date-chip" in body
+    # The label is server-rendered through the same human_date filter the
+    # rest of the app uses, so the first paint is right before JS runs.
+    assert "Today</button>" in body
+    # ...and the real input is still there, named and required.
+    assert 'type="date" id="event_date" name="event_date" required' in body

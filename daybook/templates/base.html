@@ -31,6 +31,7 @@
   <script src="{{ url_for('static', filename='toasts.js') }}"></script>
   <script src="{{ url_for('static', filename='select.js') }}"></script>
   <script src="{{ url_for('static', filename='search.js') }}"></script>
+  <script src="{{ url_for('static', filename='date-chip.js') }}"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -62,6 +63,7 @@
       {# The page fills the window; .main-inner only stops the content
          stretching to absurd widths on a very large monitor. #}
       <div class="main-inner">
+{% block topbar %}
         {# Results appear in the dropdown as you type; Enter still goes to
            the full results page. `from` carries the page the search was run
            from so that page can offer a Back link -- and when searching
@@ -90,6 +92,7 @@
             <div class="search-suggestions" id="search-suggestions"></div>
           </div>
         </form>
+{% endblock %}
         {% block content %}{% endblock %}
       </div>
     </main>

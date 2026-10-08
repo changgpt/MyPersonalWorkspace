@@ -1,7 +1,18 @@
 {% extends "base.html" %}
 {% block title %}People — FiloFax{% endblock %}
 {% block content %}
-<div class="page-header"><h2>People</h2></div>
+<div class="page-header">
+  <h2>People</h2>
+  {# People used to appear only by being tagged on a note. This is the
+     direct route in, for someone you've just met and haven't written
+     about yet; it find-or-creates, so a name that already exists opens
+     that person rather than duplicating them. #}
+  <form class="filter-bar inline-add" method="post" action="{{ url_for('people.create_view') }}">
+    <input type="text" name="name" placeholder="Add someone…" required
+           class="quick-add-input" aria-label="Name">
+    <button class="btn" type="submit">Add</button>
+  </form>
+</div>
 {% if people %}
 <div class="card-grid">
   {% for person in people %}
@@ -16,6 +27,6 @@
   {% endfor %}
 </div>
 {% else %}
-<div class="empty-state">No people yet. Tag someone on a note to add them here.</div>
+<div class="empty-state">No people yet. Add someone above, or tag them on a note.</div>
 {% endif %}
 {% endblock %}

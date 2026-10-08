@@ -67,6 +67,7 @@ daybook/
   static/toasts.js          # flash messages + window.showToast()
   static/select.js          # styled hover-to-open dropdowns over <select>
   static/search.js          # search typeahead: dismissal + arrow keys
+  static/date-chip.js       # "Today" label over a native date input
   templates/_icons.html     # nav_icon(): inline SVG sidebar icons
   blueprints/           # one file per feature area (notes, people, projects,
                         # tasks, topics, search, settings, dashboard, skills,
@@ -95,11 +96,17 @@ data/                    # git-ignored; daybook.db lives here
   `follow_up`, plus the original `notes` column (labeled "Useful context"
   in the UI — it predates the other CRM fields and already meant free-form
   notes about the person, so it was reused rather than adding a redundant
-  column; `db.update_person`'s `context` parameter maps to it). There's no
-  `/people/new` — people are still only created by tagging them on a note
-  (`find_or_create_person`), matching the Tag-like entities convention
-  above; `GET/POST /people/<id>/edit` only ever edits a person that
-  already exists. `templates/people/detail.html` shows every filled-in
+  column; `db.update_person`'s `context` parameter maps to it).
+  **`POST /people/new` exists now** (user's call: "for people there isn't a
+  button to add people directly") — this reverses the earlier rule that
+  people could *only* appear by being tagged on a note. That rule matched
+  the tag-entity pattern but meant there was no way to record someone
+  you'd just met before writing anything about them. It still goes through
+  `find_or_create_person`, so typing a name that already exists opens that
+  person rather than duplicating them (same case-insensitive match the
+  note tag field uses), and a blank name is a no-op redirect. It redirects
+  to their *edit* page, since adding someone by hand is usually a prelude
+  to filling in role/team/how-you-met. `templates/people/detail.html` shows every filled-in
   field in one card and an empty-state prompt to "add some" when none are
   set yet, rather than always rendering empty labels.
 - **Tag input in forms** is a single comma-separated text field with an
@@ -780,6 +787,20 @@ data/                    # git-ignored; daybook.db lives here
   — because the today list has those ids filtered out, dropping the
   section would make an overdue task vanish from the Dashboard entirely
   rather than merely be listed twice.
+- **Nothing is outlined. Surfaces are separated by shadow, not a border.**
+  A 1px hairline around every card, row and tile is what made the app read
+  as boxy ("the goal is to make it so that every page doesn't feel boxy").
+  `.card`, `.task-row`, `.stat-tile` and `.board-card` keep
+  `border: 1px solid transparent` (so a hover can still tint an edge
+  without the layout shifting) and get their definition from a two-layer
+  `box-shadow` — a soft drop plus a `0 0 0 1px` ring at ~3.5% opacity.
+  Filter-bar controls and form inputs use the ring alone, at 999px radius
+  in a filter bar. **Dark mode flips the ring to a faint white**: a black
+  ring on a dark surface is invisible, so there's a
+  `:root[data-theme="dark"]` block that must be updated alongside any new
+  surface. If you need something to read as *contained*, reach for spacing
+  before a border. `tests`-side this isn't pinned, but the browser check
+  asserts no visible hairline survives on any page.
 - **Composing a note has no chrome** (`notes/form.html`, `.note-compose`).
   There is deliberately **no page heading and no field labels**: the title
   input *is* the heading, and its placeholder reads "New note", so adding
@@ -804,6 +825,25 @@ data/                    # git-ignored; daybook.db lives here
     would drop it out of the tab order. The only JS is the filename
     readout, which exists because otherwise nothing tells you a file was
     chosen.
+  - **The search box is hidden here.** `base.html` wraps it in
+    `{% block topbar %}`, which `notes/form.html` overrides to nothing —
+    writing is the one screen where nothing is about finding something.
+    Any other focused screen can do the same.
+  - **The date is a chip, not a date field** (`.date-chip` +
+    `static/date-chip.js`): the label reads "Today" / "Tomorrow" /
+    "1 Dec", and clicking it hands over to the browser's own control. The
+    real `<input type="date">` is never replaced — it keeps its name,
+    `required` and validation — only visually swapped, because a browser
+    will not render a custom format inside a date input (which is why
+    dates are ISO there by convention). It carries `tabindex="-1"` while
+    collapsed, removed on open: tabbing onto an invisible date field is
+    worse than not reaching it. The first paint comes from the server's
+    own `| human_date`, so it's correct before JS runs; the JS formatter
+    deliberately covers only today/tomorrow/yesterday plus a plain
+    "1 Dec", rather than re-implementing the whole filter in two places.
+    **While the native picker is open, Enter and Escape belong to the
+    picker**, not to this script — `change` and `blur` are what actually
+    guarantee the chip closes with the right label.
   - People/projects/topics and the Save/Cancel row sit **below** the body
     (`.note-compose-foot`): tagging is what you do once the note is
     written.

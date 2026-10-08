@@ -599,13 +599,17 @@ form:not(.filter-bar):not(.search-form) > input[type="date"],
 
 label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 4px; margin-top: 16px; font-weight: 600; }
 
+/* Borderless by design. A 1px hairline around every card, row and tile is
+   exactly what made the app read as "boxy"; a soft shadow separates a
+   surface from the page without drawing a line around it. If you need a
+   card to read as *contained*, reach for spacing before a border. */
 .card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius);
   padding: 13px 16px;
   margin-bottom: 10px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 1px 2px rgba(42, 39, 36, 0.05), 0 0 0 1px rgba(42, 39, 36, 0.035);
 }
 
 /* Only cards that are a link target lift -- a card that does nothing
@@ -854,10 +858,11 @@ mark { background: var(--accent-soft); color: var(--accent-hover); padding: 0 2p
   align-items: center;
   gap: 6px 10px;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   padding: 10px 14px;
   margin-bottom: 6px;
+  box-shadow: 0 1px 2px rgba(42, 39, 36, 0.045), 0 0 0 1px rgba(42, 39, 36, 0.03);
 }
 
 /* Grows slightly under the pointer -- the rows are the thing you actually
@@ -1339,11 +1344,18 @@ input.note-compose-title:focus { outline: none; }
 
 /* Round icon-only button, used for file import and the formatting toggle.
    A <label> and a <button> both wear it, so it can't rely on either. */
+/* Worn by both a <label> (file import) and a <button> (formatting), so it
+   has to neutralise what each inherits. The global `label` rule was giving
+   the label margin-top: 16px, which is why the two sat 6px apart -- they
+   were always the same 28px size, just misaligned. */
 .icon-btn {
   display: inline-grid;
   place-items: center;
   width: 28px;
   height: 28px;
+  margin: 0;
+  font-weight: 400;
+  line-height: 1;
   flex: none;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -1401,3 +1413,119 @@ input.note-compose-title:focus { outline: none; }
 .note-compose-foot .form-row { margin-top: 10px; }
 .note-compose-foot label { font-size: 12px; }
 .note-compose-actions { margin-top: 22px; }
+
+
+/* --- The same quiet treatment, applied everywhere ---------------------
+   Composing a note was stripped back first (see .note-compose); this is
+   that pass carried across the rest of the app, because one clean page
+   next to nine boxy ones just looks inconsistent. */
+
+/* Page titles: a heading, not a banner. */
+.page-header { align-items: baseline; margin-bottom: 18px; }
+.page-header h2 { font-weight: 400; letter-spacing: -0.01em; }
+
+/* Filter bars get the compose screen's pill treatment: soft, round, and
+   quiet enough to read as chrome rather than content. */
+.filter-bar .select-button,
+.filter-bar input[type="date"],
+.filter-bar input[type="text"],
+.filter-bar .btn-secondary {
+  border-radius: 999px;
+  border-color: transparent;
+  box-shadow: 0 0 0 1px rgba(42, 39, 36, 0.045);
+}
+.filter-bar .select-button:hover,
+.filter-bar .btn-secondary:hover { box-shadow: 0 0 0 1px var(--accent-soft); }
+.filter-bar .quick-add-input { border-radius: 999px; }
+
+/* Stat tiles and board columns lose their outlines too. */
+.stat-tile {
+  border-color: transparent;
+  box-shadow: 0 1px 2px rgba(42, 39, 36, 0.05), 0 0 0 1px rgba(42, 39, 36, 0.035);
+}
+.board-column { border-color: transparent; }
+.board-card {
+  border-color: transparent;
+  box-shadow: 0 1px 2px rgba(42, 39, 36, 0.045), 0 0 0 1px rgba(42, 39, 36, 0.03);
+}
+
+/* Inputs inside a real form: keep the affordance, drop the hard edge. */
+form:not(.filter-bar):not(.search-form) input[type="text"],
+form:not(.filter-bar):not(.search-form) input[type="date"],
+form:not(.filter-bar):not(.search-form) textarea,
+.form-row input[type="text"],
+.form-row input[type="date"] {
+  border-color: transparent;
+  box-shadow: 0 0 0 1px rgba(42, 39, 36, 0.055);
+}
+form:not(.filter-bar):not(.search-form) input[type="text"]:focus,
+form:not(.filter-bar):not(.search-form) input[type="date"]:focus,
+form:not(.filter-bar):not(.search-form) textarea:focus,
+.form-row input[type="text"]:focus {
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* Empty states read as a quiet aside, not a bordered panel. */
+.empty-state { border: none; background: none; padding: 14px 0; color: var(--text-faint); }
+
+/* Dark theme needs light hairlines, not darker ones -- a black ring on a
+   dark surface is invisible, so these flip to a faint white. */
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] .task-row,
+:root[data-theme="dark"] .stat-tile,
+:root[data-theme="dark"] .board-card {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.055);
+}
+:root[data-theme="dark"] .filter-bar .select-button,
+:root[data-theme="dark"] .filter-bar input[type="date"],
+:root[data-theme="dark"] .filter-bar input[type="text"],
+:root[data-theme="dark"] .filter-bar .btn-secondary,
+:root[data-theme="dark"] form:not(.filter-bar):not(.search-form) input[type="text"],
+:root[data-theme="dark"] form:not(.filter-bar):not(.search-form) input[type="date"],
+:root[data-theme="dark"] form:not(.filter-bar):not(.search-form) textarea,
+:root[data-theme="dark"] .form-row input[type="text"],
+:root[data-theme="dark"] .form-row input[type="date"] {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.075);
+}
+
+/* --- Date chip -------------------------------------------------------
+   The friendly label and the real date input occupy the same slot; only
+   one is shown at a time (see static/date-chip.js). The input is never
+   removed from the DOM, so `required` and form validation still work. */
+.date-chip { display: inline-flex; align-items: center; }
+.date-chip-label {
+  border: none;
+  background: none;
+  padding: 6px 12px;
+  margin: 0;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.date-chip-label:hover { background: var(--surface-sunken); color: var(--text); }
+/* Hidden with position/clip rather than display:none so the input stays
+   focusable and reachable; swapping display would also stop showPicker()
+   from being able to open on it. */
+.date-chip input[type="date"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.date-chip[data-editing="true"] .date-chip-label { display: none; }
+.date-chip[data-editing="true"] input[type="date"] {
+  position: static;
+  width: auto;
+  height: auto;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+
+/* An add-field sitting in a page header (People). .filter-bar gives it the
+   compact control sizing; this just stops it inheriting the bar's own
+   bottom margin inside a header that already has one. */
+.page-header .inline-add { margin-bottom: 0; }

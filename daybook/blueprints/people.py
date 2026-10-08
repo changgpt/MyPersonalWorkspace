@@ -10,6 +10,26 @@ def list_view():
     return render_template("people/list.html", people=db.list_people())
 
 
+@bp.route("/new", methods=["POST"])
+def create_view():
+    """Add a person directly, from the People page.
+
+    Until now people could *only* appear by being tagged on a note, which
+    matched the tag-entity pattern but meant there was no way to note down
+    someone you'd just met before you'd written anything about them. Goes
+    through `find_or_create_person` rather than a plain INSERT, so typing a
+    name that already exists opens that person instead of creating a
+    duplicate -- the same case-insensitive match the note tag field uses.
+    """
+    name = request.form.get("name", "").strip()
+    if not name:
+        return redirect(url_for("people.list_view"))
+    person_id = db.find_or_create_person(name)
+    # Straight to their page: the point of adding someone by hand is
+    # usually to fill in the rest (role, team, how you met) next.
+    return redirect(url_for("people.edit_view", person_id=person_id))
+
+
 @bp.route("/<int:person_id>")
 def detail_view(person_id):
     person = db.get_person(person_id)

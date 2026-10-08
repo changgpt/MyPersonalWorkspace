@@ -9,6 +9,10 @@ Uses python-markdown with a couple of extensions:
   is silently lost on render
 - pymdownx.tasklist: renders "- [ ] foo" as a checkbox, which also sets up
   Phase 2 (where checked boxes become linked tasks) visually from day one
+- pymdownx.tilde: "~~struck~~" -> <del>, so the editor's strikethrough
+  button has something to round-trip to. Subscript (its other half) is
+  switched off: a single "~" is ordinary punctuation in a note, and
+  silently turning it into <sub> would be a nasty surprise
 """
 import markdown
 
@@ -19,9 +23,11 @@ _MD = markdown.Markdown(
         "sane_lists",
         "nl2br",
         "pymdownx.tasklist",
+        "pymdownx.tilde",
     ],
     extension_configs={
         "pymdownx.tasklist": {"custom_checkbox": True},
+        "pymdownx.tilde": {"subscript": False},
     },
 )
 

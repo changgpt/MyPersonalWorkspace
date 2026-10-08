@@ -413,7 +413,45 @@ form:not(.filter-bar):not(.search-form) > input[type="date"],
 .form-row input[type="date"],
 .form-row .select { width: 100%; }
 
-.md-toolbar { display: flex; gap: 4px; margin-top: 4px; }
+.back-link {
+  display: inline-block;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.back-link:hover { color: var(--accent); text-decoration: none; }
+
+.md-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 4px;
+  align-items: center;
+}
+/* Related buttons sit together with a divider between groups, so a
+   toolbar this long still scans as a few short runs rather than one wall
+   of controls. */
+.md-group { display: flex; gap: 4px; }
+.md-group + .md-group { padding-left: 10px; border-left: 1px solid var(--border); }
+.md-group-end { margin-left: auto; }
+
+.editor-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+/* Reading size (rich-editor.js, localStorage) -- display only, applied to
+   the editor and the rendered note alike so writing and reading match.
+   These set a custom property rather than font-size directly: the shared
+   `.rich-editor, .note-body` rule below would otherwise win on source
+   order, and specificity games are easy to break later. */
+.note-size-s { --note-size: 14px; }
+.note-size-m { --note-size: 15px; }
+.note-size-l { --note-size: 17px; }
+.note-size-xl { --note-size: 19px; }
 .md-toolbar button {
   padding: 4px 10px;
   font-size: 13px;
@@ -429,9 +467,34 @@ form:not(.filter-bar):not(.search-form) > input[type="date"],
    HTML, so they should read the same -- comfortable line length and
    spacing rather than cramped default browser typography. */
 .rich-editor, .note-body {
-  font-size: 15px;
+  font-size: var(--note-size, 15px);
   line-height: 1.65;
 }
+
+/* Blocks the toolbar can now produce. Without these, a quote or a code
+   span would save correctly but look like ordinary text while typing. */
+.rich-editor blockquote, .note-body blockquote {
+  margin: 0 0 0.9em;
+  padding: 2px 0 2px 14px;
+  border-left: 3px solid var(--accent-soft);
+  color: var(--text-muted);
+}
+.rich-editor code, .note-body code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--surface-sunken);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+}
+.rich-editor pre, .note-body pre {
+  margin: 0 0 0.9em;
+  padding: 12px 14px;
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+.rich-editor pre code, .note-body pre code { padding: 0; background: none; }
+.rich-editor del, .note-body del { color: var(--text-muted); }
 .rich-editor p, .note-body p { margin: 0 0 0.9em; }
 .rich-editor ul, .rich-editor ol, .note-body ul, .note-body ol {
   margin: 0 0 0.9em;
@@ -468,6 +531,20 @@ form:not(.filter-bar):not(.search-form) > input[type="date"],
   font-weight: normal;
   color: inherit;
 }
+/* Markdown happily merges a checklist item and a plain bullet into one
+   list, and they then sat at different indents: hiding the bullet frees
+   the marker gutter but the checkbox still started at the *content* edge,
+   pushing the item's text ~17px right of its neighbours'. Give the control
+   exactly the gutter's width and pull it into it, so the checkbox sits
+   where the bullet would have been and every item's text lines up. */
+.rich-editor li:has(.task-list-control) > .task-list-control,
+.note-body li:has(.task-list-control) > .task-list-control {
+  width: 1.5em;
+  margin: 0 0 0 -1.5em;
+  justify-content: flex-start;
+}
+.rich-editor li .task-list-control input[type="checkbox"],
+.note-body li .task-list-control input[type="checkbox"] { margin: 0; }
 /* note-checkboxes.js un-disables the checkboxes of body lines that have a
    real task behind them, so those (and only those) look clickable. */
 .note-body li.task-list-item input[type="checkbox"]:not([disabled]) { cursor: pointer; }

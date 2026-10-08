@@ -20,7 +20,9 @@ Single user, runs on `127.0.0.1`, SQLite file in `data/` (git-ignored).
   `daybook/static/vendor/htmx.min.js` (fetched once via npm during
   development — never loaded from a CDN at runtime).
 - **python-markdown + pymdown-extensions** for Markdown rendering (task list
-  checkboxes via `pymdownx.tasklist`).
+  checkboxes via `pymdownx.tasklist`, `~~strikethrough~~` via
+  `pymdownx.tilde` with its subscript half switched off — a lone `~` is
+  ordinary punctuation in a note).
 - **Turndown** (vendored, `static/vendor/turndown.js`) converts the note
   body editor's HTML back to Markdown client-side on submit — see "The
   note body editor is WYSIWYG" below. The server only ever stores/renders
@@ -154,6 +156,18 @@ data/                    # git-ignored; daybook.db lives here
     the form. htmx only sends the triggering element's own value, so the
     input needs `hx-include="[name='from']"` or the dropdown's "See all
     results" link silently loses the Back target.
+- **Every detail page has a back link to its own list page**, via the
+  `back_link(href, label)` macro in `_macros.html` (`.back-link` in
+  `style.css`). Used on notes/people/projects/topics/wins/skills detail
+  pages. It points at the *parent list*, not at the previous page: a note
+  is reachable from Notes, the Dashboard, a person, a project or search, so
+  "where you came from" would have to be threaded through every link (the
+  way `tasks.edit_view` does with `next=`, which is only worth it there
+  because a task genuinely has no single parent page), whereas the parent
+  list is always a correct answer. The label is the page's *nav* name, so
+  Topics' says "Knowledge Bank". Form pages deliberately don't use it --
+  they already have a Cancel button, which is the same escape hatch with a
+  clearer meaning mid-edit. `tests/test_back_links.py` pins all six.
 - **Note type colors** are a fixed palette (`clay`, `sage`, `ochre`,
   `dustyblue`, `plum`, `slate`, `moss`, `rose`), each with a CSS class in
   `style.css` (`.tag-<color>`). Add new colors there before using them in
@@ -459,7 +473,7 @@ data/                    # git-ignored; daybook.db lives here
 - **`.task-row` wraps rather than squeezing.** The same row renders
   full-width on the dashboard and inside a one-third-width Today column;
   a flex item can't shrink below its longest word, so without
-  `flex-wrap: wrap` on the row and `flex: 1 1 60%; min-width: 0` on the
+  `flex-wrap: wrap` on the row and `flex: 1 1 40%; min-width: 0` on the
   title, a narrow column collapsed the title to one word per line while
   the priority/due/Edit items kept their space. Keep both if you restyle it.
 - **The Dashboard de-duplicates "Today" against "Overdue".** An overdue
@@ -480,14 +494,54 @@ data/                    # git-ignored; daybook.db lives here
   database is unchanged plain Markdown, so search, task extraction, the
   note/win Markdown exports, and `.docx` import are all unaffected by this;
   only the editing experience changed.
-  - Toolbar buttons (`.md-toolbar` + `data-md-action`, same markup as
-    before) now call `document.execCommand` (`bold`/`italic`/
+  - Toolbar buttons (`.md-toolbar` + `data-md-action`) call
+    `document.execCommand` (`bold`/`italic`/`strikeThrough`/
     `insertUnorderedList`/`insertOrderedList`/`formatBlock`/`indent`/
-    `outdent`/`createLink`) instead of manipulating textarea text.
-    Checklist items insert the *exact* HTML `pymdownx.tasklist` renders
-    server-side (`markdown_utils.py`) — matching it exactly is what lets
-    a checklist item round-trip to `- [ ] `/`- [x] ` either direction.
-  - **Three load-bearing DOM fix-ups in `rich-editor.js`, found by actually
+    `outdent`/`createLink`/`removeFormat`) instead of manipulating textarea
+    text. They're wrapped in `.md-group` spans (divider + wrap at narrow
+    widths) grouped by what they do: block style, inline formatting, lists,
+    then quote/link/clear. Checklist items insert the *exact* HTML
+    `pymdownx.tasklist` renders server-side (`markdown_utils.py`) —
+    matching it exactly is what lets a checklist item round-trip to
+    `- [ ] `/`- [x] ` either direction; `buildChecklistControl(checked)`
+    is the single place that markup is constructed, shared with the paste
+    path below.
+  - **Every toolbar action must round-trip to Markdown**, which is what
+    decides whether a button exists at all. Inline `<code>` has no
+    execCommand, so `wrapInlineCode()` does it by hand; strikethrough
+    needs *both* a Turndown rule (`<del>` → `~~`, since Turndown core's
+    is in the GFM plugin we don't vendor) and `pymdownx.tilde` server-side
+    to come back as `<del>`. Conversely **there is no font-size control
+    and no underline**: Markdown has neither, so "size" is heading level
+    (¶/H1/H2/H3) and Ctrl+U is explicitly swallowed rather than inserting
+    a `<u>` that would silently vanish on save. Don't add a button whose
+    formatting the stored Markdown can't express.
+  - **Pasted HTML is rebuilt from an allowlist** (`sanitizePastedHtml`),
+    because Word/Google Docs/web pages carry `<span style="font-family">`,
+    `<font>`, `MsoNormal` classes and nested divs that either make Turndown
+    emit odd output or show formatting the saved note won't have. Three
+    categories: `PASTE_ALLOWED` tags are kept (attributes dropped except a
+    link's `href`); `PASTE_DROPPED` tags go entirely, contents and all
+    (`<script>`/`<style>`/form controls — unwrapping those dumped a
+    stylesheet into the note); `PASTE_AS_PARAGRAPH` block wrappers become
+    `<p>` so a `<div>`-based source keeps its paragraph breaks instead of
+    running together. Everything else is unwrapped, keeping its text.
+    `<input type="checkbox">` is special-cased through
+    `buildChecklistControl` so a checklist copied from inside the app
+    survives. Tables have no Turndown rule, so cells unwrap with a
+    separating space rather than running together. The paste uses
+    `execCommand("insertHTML")` to stay on the browser's undo stack.
+    `notes/form.html` tells the user this in one line under the editor.
+  - **Reading size (A−/A+) is a display preference, not note content.**
+    `stepSize` writes `localStorage["filofax-note-size"]` and `applySize`
+    toggles `.note-size-s/m/l/xl` on both `.rich-editor` and `.note-body`,
+    so a note reads at the size it was written at. The classes set a
+    `--note-size` *custom property* which the shared
+    `.rich-editor, .note-body` rule consumes — setting `font-size`
+    directly would lose on source order to that rule. The same A−/A+
+    buttons appear in the editor toolbar and in `notes/detail.html`'s
+    header actions; both just carry `data-note-size="-1"/"1"`.
+  - **Four load-bearing DOM fix-ups in `rich-editor.js`, found by actually
     exercising the editor in a browser (Chrome's execCommand is notoriously
     inconsistent — don't trust it to produce valid HTML and don't remove
     these without re-testing the exact scenarios in their comments):
@@ -505,6 +559,21 @@ data/                    # git-ignored; daybook.db lives here
       live (it defeats the `:has()` bullet-hiding rule below, among other
       things), so it runs after every toolbar action, after Tab/Shift+Tab,
       and on every `input` event, not just at submit time.
+    - `ensureTopLevelBlock` — text typed into a *wholly empty* editor (a
+      new note whose type has no template) lands as a bare text node with
+      no block wrapper; `defaultParagraphSeparator` only governs what
+      Enter creates, not the first line. execCommand then has no block to
+      work on: `insertUnorderedList` rebuilds the node and resets the
+      selection to the editor's start, so the next Enter inserted *above*
+      the line just typed — which cascaded into the whole note collapsing
+      into one garbled item on save. Promotes that bare run to a `<p>`
+      with `formatBlock` (which preserves the caret), on `input`, on Tab
+      and before every toolbar action. The check is deliberately narrow —
+      only when the caret itself is in a direct text child of the editor —
+      so it can never reformat a list item or heading. The editor is left
+      genuinely empty until something is typed, because the
+      `.rich-editor:empty::before` placeholder depends on it; don't
+      pre-seed a `<p>` to "fix" this.
     - `insertChecklistItem`'s empty-block detection treats `<p>`/`<div>`
       and `<li>` differently on purpose. Pressing Enter to exit a *nested*
       list only backs out one level (to a new empty `<li>`, not a plain
@@ -521,7 +590,13 @@ data/                    # git-ignored; daybook.db lives here
     then add action items right after) — so `.rich-editor li:has(
     .task-list-control)` hides the marker on individual checkbox items
     only; a blanket rule on `ul.task-list` would also hide the bullet on
-    any plain items Markdown merged into the same list.
+    any plain items Markdown merged into the same list. Hiding the marker
+    frees the gutter but doesn't fill it, so in such a merged list the
+    checkbox started at the *content* edge and its text sat ~17px right of
+    its plain neighbours'; the control is given exactly the gutter's width
+    (`width: 1.5em; margin-left: -1.5em`) so the checkbox sits where the
+    bullet would be and every item's text lines up. That also widens the
+    click target, which `note-checkboxes.js` relies on.
   - Tab/Shift+Tab inside the editor call `execCommand('indent'/'outdent')`
     directly (meaningful mainly inside a list); this is unrelated to
     `editor-toolbar.js`'s own Tab handling, which only applies to plain

@@ -1,7 +1,8 @@
 {% extends "base.html" %}
-{% from "_macros.html" import note_card %}
+{% from "_macros.html" import back_link, note_card %}
 {% block title %}{{ project['name'] }} — FiloFax{% endblock %}
 {% block content %}
+{{ back_link(url_for('projects.list_view'), "Projects") }}
 <div class="page-header">
   <h2>{{ project['name'] }}</h2>
 </div>

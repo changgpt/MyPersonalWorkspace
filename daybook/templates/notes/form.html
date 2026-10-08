@@ -31,18 +31,45 @@
   </div>
 
   <label for="body_editor">Body</label>
+  {# Grouped by what each does rather than one long row: text style, then
+     inline formatting, then lists, then the rest. "Size" is heading level
+     (H1/H2/H3) because that's what Markdown actually stores -- the A-/A+
+     control on the right changes display size only. #}
   <div class="md-toolbar" data-target="body_editor">
-    <button type="button" data-md-action="bold" title="Bold"><strong>B</strong></button>
-    <button type="button" data-md-action="italic" title="Italic"><em>I</em></button>
-    <button type="button" data-md-action="heading" title="Heading">H</button>
-    <button type="button" data-md-action="bullet" title="Bullet list">• List</button>
-    <button type="button" data-md-action="numbered" title="Numbered list">1. List</button>
-    <button type="button" data-md-action="checkbox" title="Checklist item">☑ Check</button>
-    <button type="button" data-md-action="link" title="Link">Link</button>
-    <button type="button" data-md-action="outdent" title="Outdent (Shift+Tab)">&larr; Indent</button>
-    <button type="button" data-md-action="indent" title="Indent (Tab)">Indent &rarr;</button>
+    <span class="md-group">
+      <button type="button" data-md-action="paragraph" title="Normal text">&para;</button>
+      <button type="button" data-md-action="h1" title="Large heading">H1</button>
+      <button type="button" data-md-action="h2" title="Medium heading">H2</button>
+      <button type="button" data-md-action="h3" title="Small heading">H3</button>
+    </span>
+    <span class="md-group">
+      <button type="button" data-md-action="bold" title="Bold (Ctrl+B)"><strong>B</strong></button>
+      <button type="button" data-md-action="italic" title="Italic (Ctrl+I)"><em>I</em></button>
+      <button type="button" data-md-action="strike" title="Strikethrough"><s>S</s></button>
+      <button type="button" data-md-action="code" title="Inline code">&lt;/&gt;</button>
+    </span>
+    <span class="md-group">
+      <button type="button" data-md-action="bullet" title="Bullet list">&bull; List</button>
+      <button type="button" data-md-action="numbered" title="Numbered list">1. List</button>
+      <button type="button" data-md-action="checkbox" title="Checklist item">&#9745; Check</button>
+      <button type="button" data-md-action="outdent" title="Outdent (Shift+Tab)">&larr;</button>
+      <button type="button" data-md-action="indent" title="Indent (Tab)">&rarr;</button>
+    </span>
+    <span class="md-group">
+      <button type="button" data-md-action="quote" title="Quote">&ldquo; Quote</button>
+      <button type="button" data-md-action="link" title="Link (Ctrl+K)">Link</button>
+      <button type="button" data-md-action="clear" title="Clear formatting">Clear</button>
+    </span>
+    <span class="md-group md-group-end">
+      <button type="button" data-note-size="-1" title="Smaller text">A&minus;</button>
+      <button type="button" data-note-size="1" title="Larger text">A+</button>
+    </span>
   </div>
   <div class="rich-editor" id="body_editor" contenteditable="true" data-placeholder="Start typing…">{{ (note['body_markdown'] if note else (note_type['template_markdown'] if note_type else '')) | markdown | safe }}</div>
+  <div class="editor-footer">
+    <span class="card-meta" data-word-count-for="body_editor"></span>
+    <span class="card-meta">Pasted text keeps its formatting but drops fonts and colours.</span>
+  </div>
   <textarea id="body_markdown" name="body_markdown" data-source="body_editor" style="display:none" aria-hidden="true"></textarea>
 
   <label for="note_file">Or import from a file (.txt, .md, .docx — replaces the body above)</label>

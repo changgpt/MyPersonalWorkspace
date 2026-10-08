@@ -1,7 +1,8 @@
 {% extends "base.html" %}
-{% from "_macros.html" import note_card %}
+{% from "_macros.html" import back_link, note_card %}
 {% block title %}{{ topic['name'] }} — FiloFax{% endblock %}
 {% block content %}
+{{ back_link(url_for('topics.list_view'), "Knowledge Bank") }}
 <div class="page-header">
   <h2>{{ topic['name'] }}</h2>
 </div>

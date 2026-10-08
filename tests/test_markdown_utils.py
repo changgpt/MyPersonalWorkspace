@@ -32,3 +32,22 @@ def test_blank_line_still_starts_a_new_paragraph():
     html = render_markdown("Paragraph one\n\nParagraph two")
     assert html.count("<p>") == 2
     assert "<br" not in html
+
+
+def test_renders_strikethrough():
+    html = render_markdown("~~dropped~~ from scope")
+    assert "<del>dropped</del>" in html
+
+
+def test_single_tilde_is_left_alone():
+    # Subscript is switched off on purpose (see markdown_utils): a lone "~"
+    # is ordinary punctuation in a note, not markup.
+    html = render_markdown("approx ~20 people")
+    assert "<sub>" not in html
+    assert "~20" in html
+
+
+def test_renders_blockquote_and_inline_code():
+    html = render_markdown("> quoted line")
+    assert "<blockquote>" in html
+    assert "<code>db.py</code>" in render_markdown("see `db.py`")

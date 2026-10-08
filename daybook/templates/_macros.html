@@ -8,6 +8,15 @@
 </div>
 {% endmacro %}
 
+{# Breadcrumb-style escape hatch for detail pages, which otherwise offer no
+   way out but the sidebar. Points at the parent list rather than the
+   previous page: the parent is always correct, whereas "where you came
+   from" varies (a note can be reached from Notes, the Dashboard, a
+   person, search...) and would need threading through every link. #}
+{% macro back_link(href, label) %}
+<a class="back-link" href="{{ href }}">&larr; {{ label }}</a>
+{% endmacro %}
+
 {% macro person_pill(person) %}
 <a class="pill-link" href="{{ url_for('people.detail_view', person_id=person['id']) }}">{{ person['name'] }}</a>
 {% endmacro %}

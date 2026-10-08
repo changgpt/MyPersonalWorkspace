@@ -57,6 +57,7 @@ daybook/
   static/drag-drop.js       # generic delegated HTML5 drag/drop (Today + Board)
   static/toasts.js          # flash messages + window.showToast()
   static/select.js          # styled hover-to-open dropdowns over <select>
+  static/search.js          # search typeahead: dismissal + arrow keys
   blueprints/           # one file per feature area (notes, people, projects,
                         # tasks, topics, search, settings, dashboard, skills,
                         # wins, activity, weekly_review)
@@ -126,6 +127,33 @@ data/                    # git-ignored; daybook.db lives here
 - **FTS5 search index** (`note_fts`) is an external-content table kept in
   sync by SQL triggers in `schema.sql` (`note_ai`/`note_ad`/`note_au`) —
   don't write to `note_fts` directly; it follows `note` automatically.
+- **The search box is a typeahead over everything, not just notes.**
+  Typing fires `GET /search/suggest` (htmx, 180ms debounce) and drops a
+  grouped panel under the box — notes, tasks, people, projects, topics —
+  so results arrive without pressing Enter; Enter still goes to the full
+  results page. `db.search_suggestions` runs notes through FTS5 (the
+  trailing `*` in `search_notes`' query is what prefix-matches "hedg" to
+  "hedging") and the other four through a `LIKE` over their name/title:
+  they're small tables, and a LIKE reads far clearer than keeping four
+  more external-content indexes in sync. User-typed `%`/`_`/`\` are
+  escaped (`db._like_pattern`), or searching "100%" would match every row.
+  - `/search/suggest` is deliberately its *own* endpoint rather than an
+    `HX-Request` branch on `search_view` (the usual convention above):
+    it isn't the results page in fragment form but a different, shorter
+    thing, capped per kind and rendered over whatever page you're on.
+  - An empty query renders **nothing at all**, and `.search-suggestions:empty`
+    hides the panel — so "closed" is not a state anything has to track.
+    `static/search.js` only handles dismissal (Escape, click-outside) and
+    arrow-key navigation; htmx does the fetching.
+  - The search form carries the page it was used from as a hidden `from`
+    field, which is what lets the results page offer "← Back to Tasks"
+    (`search._back_target`, labelled from `_SECTION_LABELS` by longest
+    prefix). It's validated as an internal path exactly like
+    `tasks._safe_next`, and `base.html` re-emits the *validated* value on
+    the results page so a hand-crafted `from` can't be reflected back into
+    the form. htmx only sends the triggering element's own value, so the
+    input needs `hx-include="[name='from']"` or the dropdown's "See all
+    results" link silently loses the Back target.
 - **Note type colors** are a fixed palette (`clay`, `sage`, `ochre`,
   `dustyblue`, `plum`, `slate`, `moss`, `rose`), each with a CSS class in
   `style.css` (`.tag-<color>`). Add new colors there before using them in

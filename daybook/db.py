@@ -357,29 +357,78 @@ def notes_for_topic(topic_id):
 
 # --- Search ----------------------------------------------------------------
 
-def search_notes(query_text):
+def search_notes(query_text, limit=None):
     db = get_db()
     if not query_text or not query_text.strip():
         return []
     # FTS5 query syntax treats punctuation specially; wrap each term so a
-    # search like "user's" or "api-key" doesn't raise a syntax error.
+    # search like "user's" or "api-key" doesn't raise a syntax error. The
+    # trailing * prefix-matches, which is what makes this usable as a
+    # typeahead -- "hedg" finds "hedging".
     terms = query_text.strip().split()
     fts_query = " ".join(f'"{t}"*' for t in terms)
-    rows = db.execute(
-        """
+    query = """
         SELECT note.id, note.event_date,
                highlight(note_fts, 0, '<mark>', '</mark>') AS title_html,
                snippet(note_fts, 1, '<mark>', '</mark>', '…', 10) AS snippet_html,
+               note.title AS title,
                note_type.name AS type_name, note_type.color AS type_color
         FROM note_fts
         JOIN note ON note.id = note_fts.rowid
         JOIN note_type ON note_type.id = note.note_type_id
         WHERE note_fts MATCH ?
         ORDER BY rank
-        """,
-        (fts_query,),
-    ).fetchall()
-    return rows
+        """
+    params = [fts_query]
+    if limit is not None:
+        query += " LIMIT ?"
+        params.append(limit)
+    return db.execute(query, params).fetchall()
+
+
+def _like_pattern(text):
+    """A LIKE pattern matching `text` anywhere in a value, with any
+    wildcard the user actually typed escaped -- otherwise searching for
+    "50%" or "snake_case" would match far more than they meant."""
+    escaped = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
+def search_suggestions(query_text, limit_per_kind=5):
+    """Matches for the search box's typeahead dropdown, across every kind
+    of thing it can reach -- "anything related to my search" is as often a
+    person or a project as it is a note.
+
+    Notes go through the FTS5 index (prefix-matched and ranked, so the
+    dropdown agrees with the full results page). The rest are small tables
+    searched with a LIKE over their name/title, which reads far clearer
+    than keeping four more external-content FTS indexes in sync for what
+    is only ever a handful of rows.
+    """
+    query_text = (query_text or "").strip()
+    if not query_text:
+        return {}
+    db = get_db()
+    pattern = _like_pattern(query_text)
+
+    def by_name(table):
+        return db.execute(
+            f"""SELECT id, name FROM {table} WHERE name LIKE ? ESCAPE '\\'
+                ORDER BY name LIMIT ?""",
+            (pattern, limit_per_kind),
+        ).fetchall()
+
+    return {
+        "notes": search_notes(query_text, limit=limit_per_kind),
+        "tasks": db.execute(
+            """SELECT id, title, status FROM task WHERE title LIKE ? ESCAPE '\\'
+               ORDER BY (status = 'done'), id DESC LIMIT ?""",
+            (pattern, limit_per_kind),
+        ).fetchall(),
+        "people": by_name("person"),
+        "projects": by_name("project"),
+        "topics": by_name("topic"),
+    }
 
 
 # --- Tasks -----------------------------------------------------------------

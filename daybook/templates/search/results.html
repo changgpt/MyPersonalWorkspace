@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Search — FiloFax{% endblock %}
 {% block content %}
-<div class="page-header"><h2>Search</h2></div>
+<div class="page-header">
+  <h2>Search</h2>
+  <a class="btn btn-secondary" href="{{ back_url }}">&larr; Back to {{ back_label }}</a>
+</div>
 
 {% if query_text %}
   <p class="card-meta">Results for "{{ query_text }}"</p>

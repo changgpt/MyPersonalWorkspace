@@ -198,7 +198,88 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
 .search-form { margin-bottom: 24px; }
 /* Wide enough not to look stranded now the page is fluid, but capped --
    search is a secondary action and shouldn't dominate every page. */
-.search-form input[type="text"] { width: 100%; max-width: 420px; }
+.search-box { position: relative; width: 100%; max-width: 420px; }
+.search-form input[type="text"] { width: 100%; }
+
+/* --- Search typeahead ---------------------------------------------------
+   The dropdown is whatever search/_suggestions.html rendered; an empty
+   query renders nothing, and this :empty rule is what makes "no output"
+   equal "closed", so there's no open/closed state to keep in sync. */
+.search-suggestions {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 45;
+}
+.search-suggestions:empty { display: none; }
+
+.search-panel {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 28px rgba(42, 39, 36, 0.18);
+  animation: settle-in var(--t) var(--ease);
+}
+
+.search-group + .search-group {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.search-group-label {
+  padding: 6px 10px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+}
+
+.search-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--text);
+  transition: background-color var(--t-fast) var(--ease);
+}
+.search-suggestion:hover, .search-suggestion.is-active {
+  background: var(--surface-sunken);
+  color: var(--text);
+  text-decoration: none;
+}
+.search-suggestion .card-meta { margin-top: 0; flex: none; }
+.search-suggestion-text {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.search-suggestion-done { text-decoration: line-through; color: var(--text-faint); }
+
+.search-all {
+  justify-content: center;
+  margin-top: 4px;
+  padding-top: 9px;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.search-empty {
+  padding: 14px 10px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 14px;
+}
 
 .btn {
   display: inline-block;

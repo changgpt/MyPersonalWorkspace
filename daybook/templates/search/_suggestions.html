@@ -1,0 +1,72 @@
+{# Rendered into #search-suggestions as you type (search.suggest_view).
+   Renders nothing at all when there's nothing to show -- the panel is
+   hidden by a :empty rule, so "no output" is how the dropdown closes. #}
+{% set any_hit = groups and (groups.notes or groups.tasks or groups.people or groups.projects or groups.topics) %}
+{% if query_text.strip() %}
+<div class="search-panel">
+  {% if any_hit %}
+    {% if groups.notes %}
+    <div class="search-group">
+      <div class="search-group-label">Notes</div>
+      {% for row in groups.notes %}
+      <a class="search-suggestion" href="{{ url_for('notes.detail_view', note_id=row['id']) }}">
+        <span class="tag tag-{{ row['type_color'] }}">{{ row['type_name'] }}</span>
+        <span class="search-suggestion-text">{{ row['title'] }}</span>
+        <span class="card-meta">{{ row['event_date'] | human_date }}</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if groups.tasks %}
+    <div class="search-group">
+      <div class="search-group-label">Tasks</div>
+      {% for task in groups.tasks %}
+      <a class="search-suggestion" href="{{ url_for('tasks.edit_view', task_id=task['id'], next=from_path or url_for('tasks.today_view')) }}">
+        <span class="search-suggestion-text {{ 'search-suggestion-done' if task['status'] == 'done' }}">{{ task['title'] }}</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if groups.people %}
+    <div class="search-group">
+      <div class="search-group-label">People</div>
+      {% for person in groups.people %}
+      <a class="search-suggestion" href="{{ url_for('people.detail_view', person_id=person['id']) }}">
+        <span class="search-suggestion-text">{{ person['name'] }}</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if groups.projects %}
+    <div class="search-group">
+      <div class="search-group-label">Projects</div>
+      {% for project in groups.projects %}
+      <a class="search-suggestion" href="{{ url_for('projects.detail_view', project_id=project['id']) }}">
+        <span class="search-suggestion-text">{{ project['name'] }}</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if groups.topics %}
+    <div class="search-group">
+      <div class="search-group-label">Knowledge Bank</div>
+      {% for topic in groups.topics %}
+      <a class="search-suggestion" href="{{ url_for('topics.detail_view', topic_id=topic['id']) }}">
+        <span class="search-suggestion-text">{{ topic['name'] }}</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <a class="search-suggestion search-all" href="{{ url_for('search.search_view', q=query_text, **{'from': from_path}) }}">
+      See all results for “{{ query_text }}”
+    </a>
+  {% else %}
+    <div class="search-empty">Nothing matches “{{ query_text }}”.</div>
+  {% endif %}
+</div>
+{% endif %}

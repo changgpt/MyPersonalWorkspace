@@ -1,0 +1,76 @@
+{# Swapped in by htmx on Dashboard load and on every arrow click, so it
+   owns the whole card body including the header's paging arrows. #}
+<div class="card coming-up" id="coming-up">
+  <div class="coming-up-header">
+    <h3>Coming up</h3>
+    <div class="coming-up-nav">
+      {% if offset != 0 %}
+      <button class="btn-icon" type="button" title="Back to today"
+              hx-get="{{ url_for('calendar.upcoming_view', offset=0) }}"
+              hx-target="#coming-up" hx-swap="outerHTML">Today</button>
+      {% endif %}
+      <button class="btn-icon" type="button" title="Earlier"
+              hx-get="{{ url_for('calendar.upcoming_view', offset=offset - 1) }}"
+              hx-target="#coming-up" hx-swap="outerHTML">&lsaquo;</button>
+      <button class="btn-icon" type="button" title="Later"
+              hx-get="{{ url_for('calendar.upcoming_view', offset=offset + 1) }}"
+              hx-target="#coming-up" hx-swap="outerHTML">&rsaquo;</button>
+    </div>
+  </div>
+
+  {% if error %}
+    <p class="card-meta">{{ error }}</p>
+  {% elif days is none %}
+    {# No source configured at all -- a setup hint, not an error. #}
+    <p class="card-meta">
+      Not connected to Outlook yet. On Windows with classic Outlook open it
+      works with no setup; otherwise see <code>OUTLOOK_SOURCE</code> in
+      <code>.env.example</code>.
+    </p>
+  {% else %}
+    <div class="coming-up-days">
+      {% for day in days %}
+      <div class="coming-up-day{{ ' is-past' if day.is_past }}">
+        <div class="coming-up-date">
+          <span class="coming-up-daynum">{{ day.date.day }}</span>
+          <span class="coming-up-monthday">
+            <span class="coming-up-month">
+              {{ day.date.strftime('%B') }}{% if day.is_today %}<span class="coming-up-dot" title="Today"></span>{% endif %}
+            </span>
+            <span class="coming-up-weekday">{{ day.date.strftime('%a') }}</span>
+          </span>
+        </div>
+        <div class="coming-up-events">
+          {% if day.events %}
+            {% for event in day.events %}
+            {% set prefill = event | note_prefill %}
+            <div class="coming-up-event
+                        {{- ' is-tentative' if event.show_as == 'tentative' }}
+                        {{- ' is-free' if event.show_as == 'free' }}">
+              <div class="coming-up-event-title">
+                <span>{{ event.subject }}</span>
+                {# Opens a note already titled after the meeting, dated to
+                   it, and with the attendees in the people field. #}
+                <a class="coming-up-take-notes"
+                   href="{{ url_for('notes.new_view', **prefill) }}">Take notes</a>
+                {% if event.join_url %}
+                <a class="coming-up-join" href="{{ event.join_url }}" target="_blank" rel="noopener">Join</a>
+                {% endif %}
+              </div>
+              <div class="coming-up-event-meta">
+                {{ event | time_range }}{% if event.location %} &middot; {{ event.location }}{% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="coming-up-empty">{{ day.empty_label }}</div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% if source_label %}
+    <p class="card-meta coming-up-source">via {{ source_label }}</p>
+    {% endif %}
+  {% endif %}
+</div>

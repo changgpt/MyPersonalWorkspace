@@ -46,19 +46,34 @@ def list_view():
 def new_view():
     note_type_id = request.args.get("type", type=int)
     note_type = db.get_note_type(note_type_id) if note_type_id else None
+    # Prefill, used by the Dashboard's "Coming up" card so "Take notes" on
+    # a meeting opens a note already about it (see calendar_utils.
+    # note_prefill). Nothing is created until the form is submitted, so
+    # these are only ever defaults in the fields -- a stray query param
+    # can't write anything.
     return render_template(
         "notes/form.html",
         note=None,
         note_type=note_type,
         note_types=db.list_note_types(),
-        people_text="",
-        projects_text="",
+        prefill_title=request.args.get("title", ""),
+        people_text=request.args.get("people", ""),
+        projects_text=request.args.get("projects", ""),
         topics_text="",
         existing_people=db.list_people(),
         existing_projects=db.list_projects(),
         existing_topics=db.list_topics(),
-        today=date.today().isoformat(),
+        today=_safe_iso_date(request.args.get("date")),
     )
+
+
+def _safe_iso_date(value):
+    """A prefilled date has to be valid ISO or the browser's date input
+    silently renders blank; fall back to today rather than trusting it."""
+    try:
+        return date.fromisoformat(value).isoformat() if value else date.today().isoformat()
+    except ValueError:
+        return date.today().isoformat()
 
 
 @bp.route("", methods=["POST"])

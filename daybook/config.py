@@ -39,3 +39,31 @@ def _parse_date(value, default):
 # since that's a guess, not a real fallback value.
 INTERNSHIP_START_DATE = _parse_date(os.environ.get("INTERNSHIP_START_DATE"), date(2026, 10, 5))
 INTERNSHIP_END_DATE = _parse_date(os.environ.get("INTERNSHIP_END_DATE"), date(2027, 4, 2))
+
+
+# --- Outlook "Coming up" card -----------------------------------------
+# Which source reads the calendar: "auto" (classic Outlook desktop over
+# COM if it's there, else Microsoft Graph), "com", "graph", or "off" to
+# hide the card. See daybook/calendar_sources.py.
+OUTLOOK_SOURCE = os.environ.get("OUTLOOK_SOURCE", "auto")
+
+# Graph path only. The client id of a public-client app registration with
+# delegated Calendars.Read; no client secret is involved (and none should
+# be put here) because the token is yours, obtained by `flask
+# outlook-login`. Tenant defaults to "organizations" so a work account
+# works without knowing the tenant id.
+GRAPH_CLIENT_ID = os.environ.get("GRAPH_CLIENT_ID", "")
+GRAPH_TENANT_ID = os.environ.get("GRAPH_TENANT_ID", "organizations")
+
+# Windows timezone name (not an IANA one): this is what Graph's
+# `Prefer: outlook.timezone` header expects, and it's also exactly what
+# Outlook reports as your mailbox timezone, so it can be copied straight
+# from there. Only used on the Graph path -- COM is already local.
+CALENDAR_TIMEZONE = os.environ.get("CALENDAR_TIMEZONE", "GMT Standard Time")
+
+# How many days the card shows at once, and how far the arrows page.
+CALENDAR_DAYS = int(os.environ.get("CALENDAR_DAYS", "3") or 3)
+
+# Short on purpose: long enough that paging the arrows back and forth is
+# instant, short enough that a meeting just accepted shows up on its own.
+CALENDAR_CACHE_SECONDS = int(os.environ.get("CALENDAR_CACHE_SECONDS", "120") or 120)

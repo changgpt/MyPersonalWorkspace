@@ -18,6 +18,16 @@
   </div>
 </div>
 
+{# Loaded after the page rather than with it: reading Outlook costs a few
+   hundred milliseconds at best, and the Dashboard shouldn't wait on it.
+   The placeholder is replaced outerHTML by calendar/_upcoming.html. #}
+<div id="coming-up" class="card coming-up coming-up-loading"
+     hx-get="{{ url_for('calendar.upcoming_view') }}"
+     hx-trigger="load" hx-swap="outerHTML">
+  <div class="coming-up-header"><h3>Coming up</h3></div>
+  <p class="card-meta">Checking your calendar…</p>
+</div>
+
 <div class="page-header">
   <h2>Dashboard</h2>
   <a class="btn" href="{{ url_for('notes.new_view') }}">+ New note</a>

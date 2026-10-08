@@ -28,6 +28,11 @@ Single user, runs on `127.0.0.1`, SQLite file in `data/` (git-ignored).
   note body editor is WYSIWYG" below. The server only ever stores/renders
   plain Markdown; Turndown exists purely so typing feels like a normal
   rich-text editor instead of raw Markdown source.
+- **msal + requests** (optional) for the Microsoft Graph path of the
+  Dashboard's Outlook card, **pywin32** (optional, Windows-only) for the
+  classic-Outlook-desktop path. Both imports are guarded — the app runs
+  with neither installed and just reports that no calendar source is
+  available.
 - **python-docx** for `.docx` → Markdown conversion — a deliberately partial
   converter (headings, bold/italic, bullet/numbered lists, paragraphs only;
   no tables or images). See `daybook/docx_utils.py`.
@@ -49,6 +54,8 @@ daybook/
   tag_utils.py           # shared comma-separated-tag-field parsing (notes + wins)
   greetings.py           # Dashboard greeting + motivational quote
   internship.py          # Dashboard "Week N" + days-left countdown
+  calendar_sources.py    # Outlook: COM + Graph sources (the only I/O here)
+  calendar_utils.py      # pure grouping/formatting for "Coming up" + cache
   htmx.py                # template_for/is_htmx: one route, page or fragment
   ai.py                  # Phase 4: optional Anthropic API features, off by default
   static/app.js           # Phase 5: keyboard shortcuts (n/t//) + dark mode toggle
@@ -440,6 +447,81 @@ data/                    # git-ignored; daybook.db lives here
   (`f"{d:%B} {d.day}, {d:%Y}"`), not `strftime("%b %-d, %Y")` — `%-d` (no
   leading zero) is a glibc/macOS `strftime` extension that raises on
   Windows, and this app needs to run there too.
+- **The Dashboard's "Coming up" card reads Outlook, and is loaded
+  *separately from the page*.** `dashboard.html` renders only a
+  placeholder with `hx-trigger="load"` pointing at `GET
+  /calendar/upcoming` (`blueprints/calendar.py`), which swaps the whole
+  card `outerHTML`. Reading a calendar costs a few hundred milliseconds at
+  best, and the Dashboard is the first thing you see — don't move this
+  back inline. The card is the one partial with no full-page variant
+  (hence no `htmx.template_for`): it only ever exists inside the
+  Dashboard. `tests/test_calendar.py` pins that the Dashboard never
+  touches a calendar source during its own render.
+  - **Two sources behind one interface** (`calendar_sources.py`, the only
+    module here that touches COM or the network — same split as `ai.py`):
+    `OutlookComSource` drives a *classic* Outlook desktop install over COM
+    and needs no credentials at all, which is what makes it the zero-setup
+    option on a managed work laptop; `GraphSource` calls Microsoft Graph
+    with a delegated token. `resolve_source()` honours
+    `config.OUTLOOK_SOURCE` (`auto`/`com`/`graph`/`off`) and prefers COM
+    under `auto` because it needs nothing set up. An explicitly named
+    source that isn't available **raises** rather than falling through, so
+    a typo in `.env` is visible.
+  - **A calendar that can't be read is never an error page and never a
+    toast.** `upcoming_view` catches `CalendarError` and renders the
+    message inside the card; "no source configured at all" is a separate
+    state (`days is None`) that shows a setup hint instead. A toast on
+    every Dashboard load would be unbearable, and a 500 would take the
+    whole Dashboard down with it.
+  - **The device-code prompt lives in `flask outlook-login`, not in a
+    request.** A web request can't block for a minute while someone types
+    a code into a browser, so the CLI does it once and leaves an MSAL
+    token cache in `data/` (git-ignored, chmod 600 where the OS honours
+    it); the app itself only ever calls `acquire_token_silent`. There is
+    deliberately **no client secret** anywhere — it's a public-client
+    registration reading your own calendar.
+  - **Times are localised at the boundary, not in Python.** Graph is sent
+    a `Prefer: outlook.timezone="<Windows tz name>"` header
+    (`config.CALENDAR_TIMEZONE`) and COM is local already, so
+    `CalendarEvent.start`/`.end` are always naive local datetimes and
+    nothing downstream does DST arithmetic.
+  - `event_from_graph` / `event_from_com_item` are **pure** — they take a
+    dict / any object with the COM attribute names — which is the only
+    reason this is testable at all on a machine with no Outlook. The COM
+    *fetch* path can't be exercised outside Windows; if you touch it,
+    re-test on a real classic Outlook, and keep `IncludeRecurrences = True`
+    before `Sort("[Start]")` before `Restrict(...)` — in that order, or
+    every recurring meeting silently vanishes.
+  - **`show_as` is normalised to Graph's vocabulary** (`free`/`tentative`/
+    `busy`/`oof`/`workingElsewhere`), with COM's numeric `BusyStatus`
+    mapped onto it, so templates only ever learn one set of names.
+    `free` items are dimmed and `tentative` ones get a dashed bar: real
+    calendars are full of all-day informational notices that otherwise
+    drown out the actual meetings.
+  - **Finished events drop off *today* only.** The card says "coming up",
+    so `group_by_day` filters out anything already ended today (an all-day
+    event stays, and a meeting still running counts as upcoming) — but
+    past days reached with the back arrow keep everything, because there
+    the framing doesn't apply. Empty days are still rendered: a blank
+    Friday is information. Today's empty label is "No more events today",
+    every other day's is "Nothing scheduled".
+  - The arrows page by **whole windows** (`day_window(offset, days)`), not
+    by a day, so `offset=0` is always "starting today" and that's all
+    "Back to today" has to do.
+  - Results are cached in **process memory** (`calendar_utils._CACHE`,
+    TTL `config.CALENDAR_CACHE_SECONDS`), not in the `setting` table: the
+    data is read-only and disposable, and a restart just re-fetches.
+- **"Take notes" on a calendar event prefills a note** rather than
+  creating one: `calendar_utils.note_prefill` builds query args for `GET
+  /notes/new` (`title`, `date`, `people`), so an Outlook 1:1 becomes a 1:1
+  note with the person already in the people field — tagging happens
+  through the normal `find_or_create_person` path on save, so nothing is
+  written until you submit the form. The people field is **left empty
+  above `MAX_PREFILL_PEOPLE` (5) attendees**: tagging the two people in a
+  1:1 is the point, but a fifteen-recipient distribution-list notice would
+  spray fifteen Person rows into the database on one careless save.
+  `notes.new_view`'s prefilled date goes through `_safe_iso_date`, since a
+  malformed value makes `<input type="date">` render blank.
 - **Keyboard shortcuts** (`static/app.js`): `n` new note, `t` Tasks
   (Today view, whose quick-add input has `autofocus`), `/` focuses
   `#global-search`. Guarded against firing while typing in a field or with
@@ -649,6 +731,7 @@ python -m pytest tests/ -v
 
 export FLASK_APP=run.py
 flask backup-db       # copies data/daybook.db to data/backups/daybook-<timestamp>.db
+flask outlook-login   # only for the Graph calendar path; Outlook desktop needs nothing
 ```
 
 Tests use a temporary SQLite file per test (see `tests/conftest.py`), never
@@ -694,3 +777,9 @@ and/or its source note. The People page still only shows notes.
   (stacked sidebar, single/double-column grids below 760px).
 
 All five phases from the original spec are complete.
+
+Beyond the spec (added since):
+- **Outlook "Coming up" on the Dashboard** — upcoming events read from
+  classic Outlook desktop (COM, no setup) or Microsoft Graph, lazy-loaded
+  via htmx, with "Take notes" prefilling a note from the meeting. See the
+  convention bullet above.

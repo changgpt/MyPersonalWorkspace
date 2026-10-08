@@ -9,7 +9,8 @@
       action="{{ url_for('notes.update_view', note_id=note['id']) if note else url_for('notes.create_view') }}">
 
   <label for="title">Title</label>
-  <input type="text" id="title" name="title" required value="{{ note['title'] if note else '' }}">
+  <input type="text" id="title" name="title" required
+         value="{{ note['title'] if note else (prefill_title | default('')) }}">
 
   <div class="form-row">
     <div>

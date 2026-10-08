@@ -955,3 +955,112 @@ footer.app-footer {
   .board, .today-board { grid-template-columns: 1fr; }
   .stat-tile-row { flex-direction: column; }
 }
+
+/* --- Dashboard "Coming up" (Outlook calendar) ------------------------
+   A calendar strip, not a list: one row per day in the window, the date
+   in its own left column, events stacked on the right behind an accent
+   bar. The whole card is one htmx swap target (#coming-up) -- the
+   arrows re-fetch it, so nothing here may depend on listeners bound at
+   page load. */
+.coming-up { margin-bottom: 24px; }
+.coming-up-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.coming-up-header h3 { margin: 0; }
+.coming-up-nav { display: flex; align-items: center; gap: 4px; }
+/* Square, quiet buttons: paging days shouldn't look as loud as "Save". */
+.btn-icon {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.btn-icon:hover { background: var(--surface-sunken); color: var(--text); }
+
+.coming-up-days { display: flex; flex-direction: column; }
+.coming-up-day {
+  display: flex;
+  gap: 20px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+}
+.coming-up-day:first-child { border-top: none; padding-top: 0; }
+/* Days reachable with the back arrow are context, not the point. */
+.coming-up-day.is-past { opacity: 0.55; }
+
+.coming-up-date {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 0 0 110px;
+}
+.coming-up-daynum {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  line-height: 1;
+  color: var(--text);
+}
+.coming-up-monthday { display: flex; flex-direction: column; }
+.coming-up-month { color: var(--text-muted); font-size: 13px; }
+.coming-up-weekday { color: var(--text-faint); font-size: 12px; }
+/* Marks today without spending a whole row on the word. */
+.coming-up-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-left: 5px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.coming-up-events { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.coming-up-event { padding-left: 12px; border-left: 2px solid var(--accent-soft); }
+/* A tentative hold is less certain than an accepted meeting, so its bar
+   is dashed rather than solid -- same information, no extra colour. */
+.coming-up-event.is-tentative { border-left-style: dashed; }
+/* Shown as "free" means a notice or a placeholder rather than something
+   you have to be at. Real calendars carry a lot of these (all-day
+   informational entries especially), and at full strength they drown out
+   the actual meetings -- so they stay, quietly. */
+.coming-up-event.is-free { border-left-color: var(--border); }
+.coming-up-event.is-free .coming-up-event-title { color: var(--text-muted); }
+.coming-up-event-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--text);
+}
+.coming-up-event-title > span { flex: 1 1 60%; min-width: 0; }
+.coming-up-event-meta { color: var(--text-faint); font-size: 13px; margin-top: 2px; }
+/* Revealed on hover (and on keyboard focus, or it'd be unreachable) so a
+   full day reads as a schedule rather than a wall of links. */
+.coming-up-take-notes, .coming-up-join {
+  font-size: 12px;
+  opacity: 0;
+  white-space: nowrap;
+  transition: opacity var(--t-fast) var(--ease);
+}
+.coming-up-event:hover .coming-up-take-notes,
+.coming-up-event:hover .coming-up-join,
+.coming-up-take-notes:focus-visible, .coming-up-join:focus-visible { opacity: 1; }
+.coming-up-empty { color: var(--text-faint); padding-left: 12px; border-left: 2px solid var(--border); }
+.coming-up-source { margin: 10px 0 0; text-align: right; }
+
+@media (max-width: 760px) {
+  .coming-up-day { flex-direction: column; gap: 8px; }
+  .coming-up-date { flex: none; }
+  /* Touch has no hover, so the links have to be permanently visible. */
+  .coming-up-take-notes, .coming-up-join { opacity: 1; }
+}

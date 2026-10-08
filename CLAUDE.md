@@ -488,6 +488,19 @@ data/                    # git-ignored; daybook.db lives here
     actual cause. `flask outlook-check` prints the same facts plus a trial
     fetch (counts only, never subjects, so it's safe to paste) for when
     one line isn't enough.
+  - **`OutlookComSource.import_error()` keeps the ImportError rather than
+    collapsing it to a boolean**, because pywin32 has two failure modes
+    that both raise ImportError and need *opposite* fixes:
+    `ModuleNotFoundError` means it isn't in the interpreter running the
+    app (reinstall — and the hint says `python -m pip`, not bare `pip`,
+    since installing into a different interpreter is the usual reason a
+    package "installed fine" and still won't import), while a `DLL load
+    failed` ImportError means it *is* installed but its native extensions
+    aren't registered (`python -m pywin32_postinstall -install`, elevated
+    — pip can't do it unelevated). Telling someone to reinstall something
+    already installed sends them round in circles, so the underlying error
+    is quoted in the card. `outlook-check` also prints `sys.executable`,
+    which is the one fact the card can't show and the commonest culprit.
   - **The device-code prompt lives in `flask outlook-login`, not in a
     request.** A web request can't block for a minute while someone types
     a code into a browser, so the CLI does it once and leaves an MSAL

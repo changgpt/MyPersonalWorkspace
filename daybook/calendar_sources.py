@@ -355,12 +355,25 @@ class OutlookComSource:
     name = "com"
     label = "Outlook desktop"
 
-    def is_available(self):
+    def import_error(self):
+        """`None` if `win32com.client` imports, else the ImportError.
+
+        The *reason* matters and used to be discarded. pywin32 has two
+        quite different failure modes that need opposite fixes, and both
+        raise ImportError: "No module named 'win32com'" means it isn't
+        installed in *this* interpreter, while "DLL load failed" means it
+        is installed but its native extensions aren't registered. Telling
+        someone to reinstall when it's already installed sends them in
+        circles, so the message is kept and shown.
+        """
         try:
             import win32com.client  # noqa: F401
-        except ImportError:
-            return False
-        return True
+        except ImportError as exc:
+            return exc
+        return None
+
+    def is_available(self):
+        return self.import_error() is None
 
     def fetch(self, start, end):
         try:
@@ -432,14 +445,29 @@ def unavailable_hint(preference=None):
         return "Calendar is switched off (OUTLOOK_SOURCE=off in .env)."
 
     on_windows = sys.platform == "win32"
-    com_ready = OutlookComSource().is_available()
+    com = OutlookComSource()
+    com_error = com.import_error()
 
-    if on_windows and not com_ready:
+    if on_windows and com_error is not None:
+        if isinstance(com_error, ModuleNotFoundError):
+            # `python -m pip`, not bare `pip`: installing into a different
+            # interpreter than the one running the app is the usual reason
+            # a package "installed fine" and still isn't importable.
+            return (
+                "Outlook desktop needs the pywin32 package, which isn't installed in "
+                "the Python running this app. Run `python -m pip install -r "
+                "requirements.txt` (that exact form, so it installs into this same "
+                "Python), then restart `python run.py`. `flask outlook-check` prints "
+                "which interpreter that is."
+            )
+        # Installed but not loadable -- almost always the post-install step
+        # that registers pywin32's DLLs, which pip can't run unelevated.
         return (
-            "Outlook desktop needs the pywin32 package, which isn't installed yet. "
-            "Run `pip install -r requirements.txt`, then restart `python run.py`."
+            f"pywin32 is installed but won't load ({com_error}). This is usually its "
+            "post-install step: run `python -m pywin32_postinstall -install` in an "
+            "Administrator terminal, then restart `python run.py`."
         )
-    if on_windows and com_ready:
+    if on_windows and com_error is None:
         # is_available() is true, so resolve_source() wouldn't have given
         # up -- reachable only if OUTLOOK_SOURCE pins the other source.
         return (

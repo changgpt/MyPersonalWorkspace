@@ -413,7 +413,8 @@ def test_graph_is_unavailable_without_a_client_id(monkeypatch):
 
 def test_hint_on_windows_without_pywin32_says_to_install_it(monkeypatch):
     monkeypatch.setattr(cs.sys, "platform", "win32")
-    monkeypatch.setattr(cs.OutlookComSource, "is_available", lambda self: False)
+    monkeypatch.setattr(cs.OutlookComSource, "import_error",
+                        lambda self: ModuleNotFoundError("No module named 'win32com'"))
     hint = cs.unavailable_hint("auto")
     assert "pywin32" in hint
     assert "pip install -r requirements.txt" in hint
@@ -421,7 +422,7 @@ def test_hint_on_windows_without_pywin32_says_to_install_it(monkeypatch):
 
 def test_hint_on_windows_with_pywin32_blames_the_pinned_source(monkeypatch):
     monkeypatch.setattr(cs.sys, "platform", "win32")
-    monkeypatch.setattr(cs.OutlookComSource, "is_available", lambda self: True)
+    monkeypatch.setattr(cs.OutlookComSource, "import_error", lambda self: None)
     hint = cs.unavailable_hint("graph")
     assert "OUTLOOK_SOURCE=auto" in hint
 
@@ -449,3 +450,52 @@ def test_card_shows_the_hint_not_a_generic_line(client, monkeypatch):
     monkeypatch.setattr(cs, "unavailable_hint", lambda preference=None: "Do the specific thing.")
     body = client.get("/calendar/upcoming").get_data(as_text=True)
     assert "Do the specific thing." in body
+
+
+# --- Telling the two pywin32 failures apart ---------------------------
+# Both raise ImportError but need opposite fixes, so the reason has to
+# survive rather than collapsing into one "not installed" line.
+
+def _com_raising(exc):
+    def import_error(self):
+        return exc
+    return import_error
+
+
+def test_hint_for_pywin32_not_installed_names_the_interpreter_safe_command(monkeypatch):
+    monkeypatch.setattr(cs.sys, "platform", "win32")
+    monkeypatch.setattr(cs.OutlookComSource, "import_error",
+                        _com_raising(ModuleNotFoundError("No module named 'win32com'")))
+    hint = cs.unavailable_hint("auto")
+    # `python -m pip`, not bare `pip`: installing into a different
+    # interpreter is the usual reason it "installed" and still won't load.
+    assert "python -m pip install" in hint
+    assert "outlook-check" in hint
+
+
+def test_hint_for_a_dll_failure_says_to_run_the_post_install(monkeypatch):
+    monkeypatch.setattr(cs.sys, "platform", "win32")
+    monkeypatch.setattr(cs.OutlookComSource, "import_error",
+                        _com_raising(ImportError("DLL load failed while importing win32api")))
+    hint = cs.unavailable_hint("auto")
+    assert "pywin32_postinstall" in hint
+    assert "Administrator" in hint
+    # Reinstalling is the wrong advice here and must not be what it says.
+    assert "pip install" not in hint
+    # The underlying error is quoted, so it's diagnosable from the card.
+    assert "DLL load failed" in hint
+
+
+def test_import_error_returns_none_when_pywin32_imports(monkeypatch):
+    import builtins
+
+    real_import = builtins.__import__
+
+    def fake(name, *args, **kwargs):
+        if name == "win32com.client" or name.startswith("win32com"):
+            return types.ModuleType("win32com")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fake)
+    assert cs.OutlookComSource().import_error() is None
+    assert cs.OutlookComSource().is_available() is True

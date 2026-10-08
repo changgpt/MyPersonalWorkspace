@@ -70,10 +70,18 @@ def outlook_check_command():
     from .. import config
 
     click.echo(f"platform          : {sys.platform}")
+    click.echo(f"python            : {sys.version.split()[0]}")
+    # The one fact the card itself can't show, and the usual culprit when
+    # pywin32 "is installed" but won't import: pip put it in a different
+    # interpreter than the one running the app.
+    click.echo(f"interpreter       : {sys.executable}")
     click.echo(f"OUTLOOK_SOURCE    : {config.OUTLOOK_SOURCE}")
     com = calendar_sources.OutlookComSource()
     graph = calendar_sources.GraphSource()
-    click.echo(f"pywin32 importable: {com.is_available()}")
+    com_error = com.import_error()
+    click.echo(f"pywin32 importable: {com_error is None}")
+    if com_error is not None:
+        click.echo(f"  import error    : {type(com_error).__name__}: {com_error}")
     click.echo(f"GRAPH_CLIENT_ID   : {'set' if config.GRAPH_CLIENT_ID else 'not set'}")
     click.echo(f"graph signed in   : {graph.is_available()}")
 

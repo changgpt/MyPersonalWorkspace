@@ -403,3 +403,49 @@ def test_missing_msal_reports_what_to_install(monkeypatch):
 def test_graph_is_unavailable_without_a_client_id(monkeypatch):
     monkeypatch.setattr(cs.config, "GRAPH_CLIENT_ID", "")
     assert cs.GraphSource().is_available() is False
+
+
+# --- Why nothing is available ----------------------------------------
+# The card has one line to explain itself, and it used to spend it on a
+# generic sentence that was flatly wrong in the commonest case: on Windows
+# the COM source reports unavailable when pywin32 isn't installed, which
+# is a pip install away, not "no setup needed".
+
+def test_hint_on_windows_without_pywin32_says_to_install_it(monkeypatch):
+    monkeypatch.setattr(cs.sys, "platform", "win32")
+    monkeypatch.setattr(cs.OutlookComSource, "is_available", lambda self: False)
+    hint = cs.unavailable_hint("auto")
+    assert "pywin32" in hint
+    assert "pip install -r requirements.txt" in hint
+
+
+def test_hint_on_windows_with_pywin32_blames_the_pinned_source(monkeypatch):
+    monkeypatch.setattr(cs.sys, "platform", "win32")
+    monkeypatch.setattr(cs.OutlookComSource, "is_available", lambda self: True)
+    hint = cs.unavailable_hint("graph")
+    assert "OUTLOOK_SOURCE=auto" in hint
+
+
+def test_hint_off_windows_points_at_graph(monkeypatch):
+    monkeypatch.setattr(cs.sys, "platform", "linux")
+    monkeypatch.setattr(cs.config, "GRAPH_CLIENT_ID", "")
+    hint = cs.unavailable_hint("auto")
+    assert "GRAPH_CLIENT_ID" in hint
+    assert "pywin32" not in hint, "pywin32 is not installable advice off Windows"
+
+
+def test_hint_with_a_client_id_but_no_token_says_to_sign_in(monkeypatch):
+    monkeypatch.setattr(cs.sys, "platform", "linux")
+    monkeypatch.setattr(cs.config, "GRAPH_CLIENT_ID", "abc-123")
+    assert "outlook-login" in cs.unavailable_hint("auto")
+
+
+def test_hint_when_switched_off_says_so(monkeypatch):
+    assert "switched off" in cs.unavailable_hint("off")
+
+
+def test_card_shows_the_hint_not_a_generic_line(client, monkeypatch):
+    monkeypatch.setattr(cs, "resolve_source", lambda preference=None: None)
+    monkeypatch.setattr(cs, "unavailable_hint", lambda preference=None: "Do the specific thing.")
+    body = client.get("/calendar/upcoming").get_data(as_text=True)
+    assert "Do the specific thing." in body

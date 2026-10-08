@@ -26,6 +26,7 @@ hint) so the Dashboard still renders.
 """
 import datetime as dt
 import json
+import sys
 from dataclasses import dataclass, field
 
 from . import config
@@ -415,6 +416,45 @@ class OutlookComSource:
 # --- Source selection -------------------------------------------------
 
 _SOURCES = {cls.name: cls for cls in (OutlookComSource, GraphSource)}
+
+
+def unavailable_hint(preference=None):
+    """Why no source is available, phrased as what to do about it.
+
+    The card used to show one generic line here, which actively misled on
+    the most likely case: on Windows the COM source reports itself
+    unavailable when `pywin32` simply isn't installed, and "it works with
+    no setup" is a lie in exactly that situation. Each branch below names
+    the one next step for the machine it's actually running on.
+    """
+    preference = (preference or config.OUTLOOK_SOURCE or "auto").lower()
+    if preference == "off":
+        return "Calendar is switched off (OUTLOOK_SOURCE=off in .env)."
+
+    on_windows = sys.platform == "win32"
+    com_ready = OutlookComSource().is_available()
+
+    if on_windows and not com_ready:
+        return (
+            "Outlook desktop needs the pywin32 package, which isn't installed yet. "
+            "Run `pip install -r requirements.txt`, then restart `python run.py`."
+        )
+    if on_windows and com_ready:
+        # is_available() is true, so resolve_source() wouldn't have given
+        # up -- reachable only if OUTLOOK_SOURCE pins the other source.
+        return (
+            "Outlook desktop is available but OUTLOOK_SOURCE is set to "
+            f"'{preference}'. Set OUTLOOK_SOURCE=auto in .env to use it."
+        )
+
+    # Not Windows, so COM is off the table and Graph is the only option.
+    if not config.GRAPH_CLIENT_ID:
+        return (
+            "Outlook desktop needs Windows, so this machine has to use Microsoft "
+            "Graph: set GRAPH_CLIENT_ID in .env (see .env.example), then run "
+            "`flask outlook-login`."
+        )
+    return "Almost there -- run `flask outlook-login` to finish connecting to Outlook."
 
 
 def resolve_source(preference=None):

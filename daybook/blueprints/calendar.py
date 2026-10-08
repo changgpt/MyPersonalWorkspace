@@ -19,9 +19,11 @@ bp = Blueprint("calendar", __name__, url_prefix="/calendar")
 @bp.route("/upcoming")
 def upcoming_view():
     offset = request.args.get("offset", default=0, type=int)
-    days, source_label, error = None, None, None
+    days, source_label, error, hint = None, None, None, None
     try:
         days, source_label = calendar_utils.upcoming(offset)
+        if days is None:
+            hint = calendar_sources.unavailable_hint()
     except calendar_sources.CalendarError as exc:
         # Shown in the card, not flashed: a calendar that can't be reached
         # is a property of that card, and a toast on every Dashboard load
@@ -32,6 +34,7 @@ def upcoming_view():
         days=days,
         source_label=source_label,
         error=error,
+        hint=hint,
         offset=offset,
     )
 
@@ -51,3 +54,46 @@ def outlook_login_command():
         raise click.ClickException(str(exc))
     calendar_utils.clear_cache()
     click.echo("Signed in. The Dashboard's Coming up card will use Microsoft Graph.")
+
+
+@click.command("outlook-check")
+def outlook_check_command():
+    """Say why the Dashboard's Coming up card isn't showing anything.
+
+    Exists because the card can only show one short line, and the actual
+    cause is usually an environment fact the user can't see from the
+    browser (pywin32 missing, OUTLOOK_SOURCE pinned, no token yet). Prints
+    counts only -- never event subjects -- so it's safe to paste.
+    """
+    import sys
+
+    from .. import config
+
+    click.echo(f"platform          : {sys.platform}")
+    click.echo(f"OUTLOOK_SOURCE    : {config.OUTLOOK_SOURCE}")
+    com = calendar_sources.OutlookComSource()
+    graph = calendar_sources.GraphSource()
+    click.echo(f"pywin32 importable: {com.is_available()}")
+    click.echo(f"GRAPH_CLIENT_ID   : {'set' if config.GRAPH_CLIENT_ID else 'not set'}")
+    click.echo(f"graph signed in   : {graph.is_available()}")
+
+    try:
+        source = calendar_sources.resolve_source()
+    except calendar_sources.CalendarError as exc:
+        click.echo(f"\nresolved source   : none -- {exc}")
+        return
+    if source is None:
+        click.echo(f"\nresolved source   : none")
+        click.echo(calendar_sources.unavailable_hint())
+        return
+
+    click.echo(f"\nresolved source   : {source.label}")
+    calendar_utils.clear_cache()
+    try:
+        days, label = calendar_utils.upcoming(0)
+    except calendar_sources.CalendarError as exc:
+        click.echo(f"reading it failed : {exc}")
+        return
+    for day in days or []:
+        click.echo(f"  {day['date']:%a %d %b}: {len(day['events'])} event(s)")
+    click.echo("OK -- the card should show this.")

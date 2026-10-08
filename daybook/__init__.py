@@ -40,5 +40,6 @@ def create_app():
     app.register_blueprint(weekly_review.bp)
     app.register_blueprint(calendar.bp)
     app.cli.add_command(calendar.outlook_login_command)
+    app.cli.add_command(calendar.outlook_check_command)
 
     return app

@@ -21,12 +21,12 @@
   {% if error %}
     <p class="card-meta">{{ error }}</p>
   {% elif days is none %}
-    {# No source configured at all -- a setup hint, not an error. #}
-    <p class="card-meta">
-      Not connected to Outlook yet. On Windows with classic Outlook open it
-      works with no setup; otherwise see <code>OUTLOOK_SOURCE</code> in
-      <code>.env.example</code>.
-    </p>
+    {# No source available -- a setup hint, not an error. The hint is
+       computed per machine (calendar_sources.unavailable_hint), since the
+       one next step differs completely between Windows and everywhere
+       else; a single generic line here used to misdescribe the commonest
+       case outright. #}
+    <p class="card-meta">Not connected to Outlook yet. {{ hint }}</p>
   {% else %}
     <div class="coming-up-days">
       {% for day in days %}

@@ -14,4 +14,8 @@ msal==1.31.0
 requests==2.32.3
 # pywin32: the classic Outlook desktop (COM) path. Windows-only -- the
 # marker keeps `pip install -r requirements.txt` working on macOS/Linux.
-pywin32==306; sys_platform == "win32"
+# Deliberately a floor rather than the pin everything else here uses: a
+# pywin32 release only ships wheels for the Python versions that existed
+# at the time (306 has none for 3.13+), so pinning it exactly breaks the
+# install on a newer Python instead of just getting a newer pywin32.
+pywin32>=306; sys_platform == "win32"

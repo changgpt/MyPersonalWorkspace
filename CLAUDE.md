@@ -460,19 +460,34 @@ data/                    # git-ignored; daybook.db lives here
   - **Two sources behind one interface** (`calendar_sources.py`, the only
     module here that touches COM or the network — same split as `ai.py`):
     `OutlookComSource` drives a *classic* Outlook desktop install over COM
-    and needs no credentials at all, which is what makes it the zero-setup
-    option on a managed work laptop; `GraphSource` calls Microsoft Graph
-    with a delegated token. `resolve_source()` honours
+    and needs no credentials and nothing registered, which is what makes
+    it the low-friction option on a managed work laptop — but it does need
+    `pywin32` installed, so it is **not** "no setup", and describing it
+    that way in the card's own hint actively misled (see
+    `unavailable_hint` below); `GraphSource` calls Microsoft Graph with a
+    delegated token. `resolve_source()` honours
     `config.OUTLOOK_SOURCE` (`auto`/`com`/`graph`/`off`) and prefers COM
     under `auto` because it needs nothing set up. An explicitly named
     source that isn't available **raises** rather than falling through, so
     a typo in `.env` is visible.
   - **A calendar that can't be read is never an error page and never a
     toast.** `upcoming_view` catches `CalendarError` and renders the
-    message inside the card; "no source configured at all" is a separate
-    state (`days is None`) that shows a setup hint instead. A toast on
-    every Dashboard load would be unbearable, and a 500 would take the
-    whole Dashboard down with it.
+    message inside the card; "no source available" is a separate state
+    (`days is None`) that shows a setup hint instead. A toast on every
+    Dashboard load would be unbearable, and a 500 would take the whole
+    Dashboard down with it.
+  - **That hint is computed per machine** (`unavailable_hint()`), not a
+    fixed sentence. `OutlookComSource.is_available()` only tests whether
+    `win32com.client` imports, so on Windows "unavailable" nearly always
+    means `pywin32` isn't installed — and the single generic line that
+    used to sit here told the user it "works with no setup", which is the
+    one thing that wasn't true. Each branch names the one next step for
+    the platform it's actually on (install pywin32 / `OUTLOOK_SOURCE` is
+    pinned elsewhere / set `GRAPH_CLIENT_ID` / run `flask outlook-login`).
+    Keep it that way: a card with one line of room has to spend it on the
+    actual cause. `flask outlook-check` prints the same facts plus a trial
+    fetch (counts only, never subjects, so it's safe to paste) for when
+    one line isn't enough.
   - **The device-code prompt lives in `flask outlook-login`, not in a
     request.** A web request can't block for a minute while someone types
     a code into a browser, so the CLI does it once and leaves an MSAL
@@ -731,7 +746,8 @@ python -m pytest tests/ -v
 
 export FLASK_APP=run.py
 flask backup-db       # copies data/daybook.db to data/backups/daybook-<timestamp>.db
-flask outlook-login   # only for the Graph calendar path; Outlook desktop needs nothing
+flask outlook-login   # Graph calendar path only; Outlook desktop needs no sign-in
+flask outlook-check   # why the Dashboard's "Coming up" card is empty
 ```
 
 Tests use a temporary SQLite file per test (see `tests/conftest.py`), never
@@ -780,6 +796,6 @@ All five phases from the original spec are complete.
 
 Beyond the spec (added since):
 - **Outlook "Coming up" on the Dashboard** — upcoming events read from
-  classic Outlook desktop (COM, no setup) or Microsoft Graph, lazy-loaded
+  classic Outlook desktop (COM, nothing to register) or Graph, lazy-loaded
   via htmx, with "Take notes" prefilling a note from the meeting. See the
   convention bullet above.

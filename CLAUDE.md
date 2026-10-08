@@ -517,7 +517,30 @@ data/                    # git-ignored; daybook.db lives here
     a `Prefer: outlook.timezone="<Windows tz name>"` header
     (`config.CALENDAR_TIMEZONE`) and COM is local already, so
     `CalendarEvent.start`/`.end` are always naive local datetimes and
-    nothing downstream does DST arithmetic.
+    nothing downstream does DST arithmetic. **Neither converter may
+    convert**: both read clock fields verbatim.
+    - `_com_naive_local` exists because that rule was broken once.
+      `AppointmentItem.Start` is already the local wall-clock time Outlook
+      displays, but pywin32 returns it timezone-*aware*, labelling that
+      local time as UTC — so the original
+      `datetime.fromtimestamp(value.timestamp())` round trip shifted every
+      meeting by the host's UTC offset. An hour late all summer in London,
+      and *correct wherever the offset is zero*, which is why it passed
+      every test and every review on a UTC machine and only showed up on
+      the user's laptop. Read the fields; never consult the tzinfo.
+      `tests/test_calendar.py` pins this with a tz-aware stub and asserts
+      the result is identical under London, UTC and New York.
+    - Run the suite under a non-UTC `TZ` when touching anything in this
+      area (`TZ=Europe/London python -m pytest tests/`). A UTC-only run
+      cannot see an offset bug, which is the whole lesson here; the suite
+      is green under UTC/London/New York/Tokyo/Sydney/Kiritimati.
+    - The Graph side of this is *structurally* safe for the same reason
+      (`event_from_graph` is a plain `fromisoformat` of whatever string
+      Graph returns, no arithmetic) but rests on Graph honouring the
+      `Prefer` header. That has not been verified end to end through this
+      code — only the payload shape has. If Graph ever ignored it, times
+      would come back UTC and be wrong by the offset in the *other*
+      direction; the returned `start.timeZone` is what to check first.
   - `event_from_graph` / `event_from_com_item` are **pure** — they take a
     dict / any object with the COM attribute names — which is the only
     reason this is testable at all on a machine with no Outlook. The COM

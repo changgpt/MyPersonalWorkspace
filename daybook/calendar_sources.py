@@ -301,6 +301,34 @@ class GraphSource:
 
 # --- Classic Outlook desktop over COM ---------------------------------
 
+def _com_naive_local(value):
+    """An Outlook COM time as a naive local datetime, converting nothing.
+
+    `AppointmentItem.Start` is *already* the local wall-clock time Outlook
+    shows you, so the only correct thing to do is read its clock fields and
+    drop any tzinfo. This previously went through
+    `datetime.fromtimestamp(value.timestamp())`, which is a timezone
+    conversion -- and pywin32 hands these back timezone-*aware*, labelling
+    a local wall time as UTC. The round trip therefore shifted every
+    meeting by the machine's UTC offset: an hour late all summer in
+    British Summer Time, correct only where that offset is zero (which is
+    why it looked fine in winter and in tests run under UTC).
+
+    Reading the fields is also robust to whatever tzinfo pywin32 chooses,
+    since it never consults it -- and `pywintypes.datetime` does subclass
+    `datetime`, so the fields are always there.
+    """
+    if value is None:
+        return None
+    try:
+        return dt.datetime(
+            value.year, value.month, value.day,
+            value.hour, value.minute, getattr(value, "second", 0),
+        )
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+
 def event_from_com_item(item, self_email=""):
     """Convert one Outlook `AppointmentItem` into a `CalendarEvent`.
 
@@ -308,13 +336,10 @@ def event_from_com_item(item, self_email=""):
     it a stub -- this file can't be exercised against real COM anywhere but
     a Windows box with classic Outlook installed.
     """
-    start, end = getattr(item, "Start", None), getattr(item, "End", None)
+    start, end = _com_naive_local(getattr(item, "Start", None)), \
+        _com_naive_local(getattr(item, "End", None))
     if start is None or end is None:
         return None
-    # pywin32 hands back its own time type; it behaves like a datetime but
-    # isn't one, so normalise before anything downstream compares it.
-    start = dt.datetime.fromtimestamp(start.timestamp()) if hasattr(start, "timestamp") else start
-    end = dt.datetime.fromtimestamp(end.timestamp()) if hasattr(end, "timestamp") else end
 
     self_email = self_email.lower()
     attendees = []

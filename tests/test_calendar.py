@@ -530,3 +530,76 @@ def test_no_user_facing_string_sends_you_to_the_flask_cli():
 
     offenders = [h for h in hints if "flask" in h]
     assert not offenders, f"hint(s) point at the flask CLI: {offenders}"
+
+
+# --- The BST hour shift ------------------------------------------------
+# pywin32 returns Outlook times as timezone-*aware* datetimes, labelling a
+# local wall-clock time as UTC. Converting them (as
+# datetime.fromtimestamp(v.timestamp()) did) shifts every meeting by the
+# machine's UTC offset -- an hour late all summer in London, and invisible
+# anywhere the offset is zero, which is why UTC-run tests missed it.
+
+class PyWinTimeStub(dt.datetime):
+    """Stands in for pywintypes.datetime: a tz-aware datetime subclass."""
+
+    @classmethod
+    def at(cls, y, mo, d, h, mi, tz=dt.timezone.utc):
+        return cls(y, mo, d, h, mi, tzinfo=tz)
+
+
+def test_com_times_are_taken_as_local_wall_clock_not_converted():
+    # An 11:30 meeting, handed over the way pywin32 hands it over.
+    item = com_item(
+        Start=PyWinTimeStub.at(2026, 10, 9, 11, 30),
+        End=PyWinTimeStub.at(2026, 10, 9, 12, 0),
+    )
+    event = cs.event_from_com_item(item, "")
+    assert event.start == dt.datetime(2026, 10, 9, 11, 30), \
+        f"11:30 in Outlook must read as 11:30, got {event.start}"
+    assert event.end == dt.datetime(2026, 10, 9, 12, 0)
+    assert event.start.tzinfo is None, "downstream expects naive local datetimes"
+    assert cu.format_time_range(event) == "11:30 - 12:00"
+
+
+def test_com_times_do_not_depend_on_the_machine_timezone(monkeypatch):
+    # The whole bug was a dependence on the host's UTC offset, so pin that
+    # it's gone: the same input under London (UTC+1 in October) and under
+    # UTC must produce the same wall-clock time.
+    import os
+    import time
+
+    results = []
+    for tz in ("Europe/London", "UTC", "America/New_York"):
+        monkeypatch.setenv("TZ", tz)
+        if hasattr(time, "tzset"):
+            time.tzset()
+        results.append(cs.event_from_com_item(com_item(
+            Start=PyWinTimeStub.at(2026, 10, 9, 11, 30),
+            End=PyWinTimeStub.at(2026, 10, 9, 12, 0),
+        ), "").start)
+    if hasattr(time, "tzset"):
+        os.environ.pop("TZ", None)
+        time.tzset()
+    assert results == [dt.datetime(2026, 10, 9, 11, 30)] * 3, results
+
+
+def test_com_all_day_event_keeps_midnight():
+    # A converted midnight would land on the previous day in a +1 zone,
+    # moving the event off its own row in the card.
+    item = com_item(
+        Start=PyWinTimeStub.at(2026, 10, 9, 0, 0),
+        End=PyWinTimeStub.at(2026, 10, 10, 0, 0),
+        AllDayEvent=True,
+    )
+    event = cs.event_from_com_item(item, "")
+    assert event.start == dt.datetime(2026, 10, 9, 0, 0)
+    assert event.day == dt.date(2026, 10, 9)
+
+
+def test_com_naive_datetimes_pass_through_unchanged():
+    item = com_item(Start=dt.datetime(2026, 10, 9, 9, 15), End=dt.datetime(2026, 10, 9, 9, 45))
+    assert cs.event_from_com_item(item, "").start == dt.datetime(2026, 10, 9, 9, 15)
+
+
+def test_com_unusable_time_is_skipped_not_crashed():
+    assert cs.event_from_com_item(com_item(Start="not a time"), "") is None

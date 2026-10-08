@@ -13,9 +13,19 @@ at once. `<slug>-line.svg` and `<slug>-solid.svg` are the usable assets.
 
 **Filofax is a registered trademark**, in continuous use since 1930, for
 exactly this category — personal organisers, diaries, notebooks. The icons
-below therefore avoid the three things closest to that brand's own identity:
+here avoid the three things closest to that brand's own identity:
 **ring-binder holes, punched pages, and a stylised "F"**. The shapes are clear
 of it; the *name* is not, and no logo fixes that.
+
+**See `NAMING.md`** — including why "Filofacts" is *closer* to the mark rather
+than further from it, and three alternatives that keep the wit.
+
+## Rounds
+
+- `logo-candidates.html` — round 2: folded day, spine (abstract), clasp, ribbon.
+- `round3.html` — round 3: spine read three ways, ribbon plain and with an F,
+  mark+wordmark lockups, and the wordmark in ten licensable faces.
+  Fonts are downloaded into `fonts/` so the page renders identically offline.
 
 ## Candidates
 

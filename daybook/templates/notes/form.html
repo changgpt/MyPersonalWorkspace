@@ -1,21 +1,22 @@
 {% extends "base.html" %}
-{% block title %}{{ 'Edit note' if note else 'New note' }} — FiloFax{% endblock %}
+{% block title %}{{ note['title'] if note else 'New note' }} — FiloFax{% endblock %}
 {% block content %}
-<div class="page-header">
-  <h2>{{ 'Edit note' if note else 'New note' }}</h2>
-</div>
-
-<form method="post" enctype="multipart/form-data" onsubmit="syncRichEditors(this)"
+{# Deliberately chrome-less: no page heading, no field labels, no boxes.
+   The title *is* the heading (its placeholder says "New note"), and the
+   two things you set per note sit in one faint pill row under it.
+   Everything heavier -- formatting, file import, tagging -- is either
+   behind a button or pushed to the bottom. #}
+<form class="note-compose" method="post" enctype="multipart/form-data"
+      onsubmit="syncRichEditors(this)"
       action="{{ url_for('notes.update_view', note_id=note['id']) if note else url_for('notes.create_view') }}">
 
-  <label for="title">Title</label>
-  <input type="text" id="title" name="title" required
+  <input class="note-compose-title" type="text" id="title" name="title" required
+         placeholder="New note" autocomplete="off"
          value="{{ note['title'] if note else (prefill_title | default('')) }}">
 
-  <div class="form-row">
-    <div>
-      <label for="note_type_id">Type</label>
-      <select id="note_type_id" name="note_type_id" required>
+  <div class="note-meta">
+    <div class="note-meta-pills">
+      <select id="note_type_id" name="note_type_id" required aria-label="Note type">
         {% for nt in note_types %}
           <option value="{{ nt['id'] }}"
             {{ 'selected' if (note and note['note_type_id'] == nt['id']) or (note_type and note_type['id'] == nt['id']) }}>
@@ -23,19 +24,44 @@
           </option>
         {% endfor %}
       </select>
-    </div>
-    <div>
-      <label for="event_date">Date</label>
-      <input type="date" id="event_date" name="event_date" required
+      <input type="date" id="event_date" name="event_date" required aria-label="Date"
              value="{{ note['event_date'] if note else today }}">
     </div>
+
+    {# A <label for> is the whole mechanism -- it opens the native picker
+       with no JS, so the real <input type="file"> can be visually hidden
+       (not display:none, which would take it out of the tab order). The
+       filename readout is the only JS here, because without it there is
+       no way to tell a file was chosen. #}
+    <label class="icon-btn" for="note_file" title="Import from a file (.txt, .md, .docx) — replaces the body">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+           stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M9.5 2H4.5A1.5 1.5 0 003 3.5v9A1.5 1.5 0 004.5 14h7a1.5 1.5 0 001.5-1.5V5.5z"/>
+        <path d="M9.5 2v3.5H13"/>
+      </svg>
+    </label>
+    <input class="visually-hidden" type="file" id="note_file" name="note_file"
+           accept=".txt,.md,.docx"
+           onchange="document.getElementById('note-file-name').textContent = this.files[0] ? this.files[0].name : ''">
+    <span class="note-file-name card-meta" id="note-file-name"></span>
+
+    <button class="icon-btn note-format-toggle" type="button" aria-expanded="false"
+            aria-controls="note-format-bar" title="Formatting"
+            onclick="const b=this,p=document.getElementById('note-format-bar');
+                     const open=b.getAttribute('aria-expanded')==='true';
+                     b.setAttribute('aria-expanded', String(!open));
+                     p.hidden = open;">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+           stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M2 4h12M2 8h8M2 12h5"/>
+      </svg>
+    </button>
   </div>
 
-  <label for="body_editor">Body</label>
-  {# Grouped by what each does rather than one long row: text style, then
-     inline formatting, then lists, then the rest. "Size" is heading level
-     (H1/H2/H3) because that's what Markdown actually stores -- the A-/A+
-     control on the right changes display size only. #}
+  {# Hidden until the Formatting button is pressed. `hidden` rather than a
+     class so it's hidden for assistive tech too; rich-editor.js binds its
+     buttons on load either way, so collapsing costs nothing. #}
+  <div id="note-format-bar" class="note-format-bar" hidden>
   <div class="md-toolbar" data-target="body_editor">
     <span class="md-group">
       <button type="button" data-md-action="paragraph" title="Normal text">&para;</button>
@@ -66,43 +92,45 @@
       <button type="button" data-note-size="1" title="Larger text">A+</button>
     </span>
   </div>
-  <div class="rich-editor" id="body_editor" contenteditable="true" data-placeholder="Start typing…">{{ (note['body_markdown'] if note else (note_type['template_markdown'] if note_type else '')) | markdown | safe }}</div>
-  <div class="editor-footer">
-    <span class="card-meta" data-word-count-for="body_editor"></span>
-    <span class="card-meta">Pasted text keeps its formatting but drops fonts and colours.</span>
+    <p class="card-meta note-format-hint">Pasted text keeps its formatting but drops fonts and colours.</p>
   </div>
+
+  <div class="rich-editor note-compose-body" id="body_editor" contenteditable="true"
+       data-placeholder="Write notes">{{ (note['body_markdown'] if note else (note_type['template_markdown'] if note_type else '')) | markdown | safe }}</div>
   <textarea id="body_markdown" name="body_markdown" data-source="body_editor" style="display:none" aria-hidden="true"></textarea>
 
-  <label for="note_file">Or import from a file (.txt, .md, .docx — replaces the body above)</label>
-  <input type="file" id="note_file" name="note_file" accept=".txt,.md,.docx">
+  {# Tagging stays at the bottom: it's what you do once the note is
+     written, not before. #}
+  <div class="note-compose-foot">
+    <span class="card-meta" data-word-count-for="body_editor"></span>
+    <div class="form-row">
+      <div>
+        <label for="people">People</label>
+        <input type="text" id="people" name="people" list="people-list" value="{{ people_text }}" placeholder="comma-separated">
+        <datalist id="people-list">
+          {% for p in existing_people %}<option value="{{ p['name'] }}">{% endfor %}
+        </datalist>
+      </div>
+      <div>
+        <label for="projects">Projects</label>
+        <input type="text" id="projects" name="projects" list="projects-list" value="{{ projects_text }}" placeholder="comma-separated">
+        <datalist id="projects-list">
+          {% for p in existing_projects %}<option value="{{ p['name'] }}">{% endfor %}
+        </datalist>
+      </div>
+      <div>
+        <label for="topics">Topics</label>
+        <input type="text" id="topics" name="topics" list="topics-list" value="{{ topics_text }}" placeholder="comma-separated">
+        <datalist id="topics-list">
+          {% for t in existing_topics %}<option value="{{ t['name'] }}">{% endfor %}
+        </datalist>
+      </div>
+    </div>
 
-  <div class="form-row">
-    <div>
-      <label for="people">People</label>
-      <input type="text" id="people" name="people" list="people-list" value="{{ people_text }}" placeholder="comma-separated">
-      <datalist id="people-list">
-        {% for p in existing_people %}<option value="{{ p['name'] }}">{% endfor %}
-      </datalist>
+    <div class="note-compose-actions">
+      <button class="btn" type="submit">Save note</button>
+      <a class="btn btn-secondary" href="{{ url_for('notes.detail_view', note_id=note['id']) if note else url_for('notes.list_view') }}">Cancel</a>
     </div>
-    <div>
-      <label for="projects">Projects</label>
-      <input type="text" id="projects" name="projects" list="projects-list" value="{{ projects_text }}" placeholder="comma-separated">
-      <datalist id="projects-list">
-        {% for p in existing_projects %}<option value="{{ p['name'] }}">{% endfor %}
-      </datalist>
-    </div>
-    <div>
-      <label for="topics">Topics</label>
-      <input type="text" id="topics" name="topics" list="topics-list" value="{{ topics_text }}" placeholder="comma-separated">
-      <datalist id="topics-list">
-        {% for t in existing_topics %}<option value="{{ t['name'] }}">{% endfor %}
-      </datalist>
-    </div>
-  </div>
-
-  <div style="margin-top: 24px;">
-    <button class="btn" type="submit">Save note</button>
-    <a class="btn btn-secondary" href="{{ url_for('notes.detail_view', note_id=note['id']) if note else url_for('notes.list_view') }}">Cancel</a>
   </div>
 </form>
 {% endblock %}

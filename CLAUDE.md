@@ -780,6 +780,40 @@ data/                    # git-ignored; daybook.db lives here
   — because the today list has those ids filtered out, dropping the
   section would make an overdue task vanish from the Dashboard entirely
   rather than merely be listed twice.
+- **Composing a note has no chrome** (`notes/form.html`, `.note-compose`).
+  There is deliberately **no page heading and no field labels**: the title
+  input *is* the heading, and its placeholder reads "New note", so adding
+  an `<h2>` back would say the same thing twice. Title and body are
+  borderless — a writing surface, not a form. Modelled on a reference the
+  user supplied (Granola's compose screen).
+  - The two per-note settings (type, date) share **one rounded pill**
+    (`.note-meta-pills`), so they read as a single control group rather
+    than two boxed fields.
+  - **The formatting toolbar is collapsed behind a button**
+    (`.note-format-toggle` → `#note-format-bar`, toggled via `hidden` so
+    it's hidden from assistive tech too, with `aria-expanded` on the
+    button). `rich-editor.js` binds the toolbar buttons on load whether or
+    not the bar is visible, so collapsing costs nothing — but that also
+    means **don't** move to rendering the bar lazily without re-wiring it.
+    The paste-sanitisation hint lives inside this bar now, not under the
+    editor.
+  - **File import is a `<label for="note_file">` styled as an icon
+    button.** A label natively opens the picker with no JS, which is what
+    lets the real `<input type="file">` be visually hidden. It uses
+    `.visually-hidden` (off-screen clip), **not `display: none`** — that
+    would drop it out of the tab order. The only JS is the filename
+    readout, which exists because otherwise nothing tells you a file was
+    chosen.
+  - People/projects/topics and the Save/Cancel row sit **below** the body
+    (`.note-compose-foot`): tagging is what you do once the note is
+    written.
+  - **Specificity, not `!important`.** The base control rule
+    (`input[type="text"], input[type="date"], ... { border; font-size }`)
+    is `(0,1,1)`, so a bare `.note-compose-title` class loses to it no
+    matter how late it appears — the first attempt at this silently left
+    the title boxed at 14px. The overrides are written as
+    `input.note-compose-title` to tie on specificity and win on source
+    order. Qualify with the element when overriding those base rules.
 - **The note body editor is WYSIWYG, not a Markdown-source textarea.**
   `templates/notes/form.html` renders a `contenteditable` div
   (`#body_editor`, class `.rich-editor`) pre-filled with
@@ -830,7 +864,9 @@ data/                    # git-ignored; daybook.db lives here
     survives. Tables have no Turndown rule, so cells unwrap with a
     separating space rather than running together. The paste uses
     `execCommand("insertHTML")` to stay on the browser's undo stack.
-    `notes/form.html` tells the user this in one line under the editor.
+    `notes/form.html` says so in one line inside the collapsed formatting
+    bar (it used to sit under the editor, which the chrome-less compose
+    screen had no room for).
   - **Reading size (A−/A+) is a display preference, not note content.**
     `stepSize` writes `localStorage["filofax-note-size"]` and `applySize`
     toggles `.note-size-s/m/l/xl` on both `.rich-editor` and `.note-body`,

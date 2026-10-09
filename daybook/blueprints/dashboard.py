@@ -24,7 +24,7 @@ def index():
         recent_notes=recent_notes,
         today_tasks=today_tasks,
         overdue_tasks=overdue_tasks,
-        greeting=greetings.greeting_message(config.DISPLAY_NAME),
+        greeting=greetings.greeting_parts(config.DISPLAY_NAME),
         quote=greetings.random_quote(),
         internship_week=internship.week_number(config.INTERNSHIP_START_DATE),
         internship_days_left=internship.days_remaining(config.INTERNSHIP_END_DATE),

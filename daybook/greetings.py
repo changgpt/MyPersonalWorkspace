@@ -56,10 +56,19 @@ def greeting_for_hour(hour):
     return _LATE_NIGHT
 
 
-def greeting_message(display_name, now=None):
+def greeting_parts(display_name, now=None):
+    """(words, emoji) kept apart, so the Dashboard can set the emoji as a
+    mark *before* the words, at its own size, rather than trailing them.
+    The name rule lives here so the two forms can't disagree about it:
+    no name, no comma."""
     text, emoji = greeting_for_hour((now or datetime.now()).hour)
     name = (display_name or "").strip()
-    return f"{text}, {name} {emoji}" if name else f"{text} {emoji}"
+    return (f"{text}, {name}" if name else text), emoji
+
+
+def greeting_message(display_name, now=None):
+    words, emoji = greeting_parts(display_name, now)
+    return f"{words} {emoji}"
 
 
 def random_quote():

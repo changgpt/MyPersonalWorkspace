@@ -2,19 +2,26 @@
 {% from "_macros.html" import note_card %}
 {% block title %}Dashboard — FiloFax{% endblock %}
 {% block content %}
+{# The landing: one large, regular-weight serif line with its mark in
+   front, set well down the page with room around it. Everything under it
+   is deliberately small -- the greeting is the only thing on this page
+   that's allowed to be big. #}
+{% set greeting_words, greeting_emoji = greeting %}
 <div class="greeting-banner">
-  <h2 class="greeting-text">{{ greeting }}</h2>
+  <h1 class="greeting-text"><span class="greeting-mark" aria-hidden="true">{{ greeting_emoji }}</span>{{ greeting_words }}</h1>
   <p class="greeting-quote">“{{ quote.text }}” <span class="greeting-author">— {{ quote.author }}</span></p>
 </div>
 
+{# Two compact one-line tiles rather than two tall cards: value and label
+   share a line, so the row costs ~45px instead of ~85px. #}
 <div class="stat-tile-row">
   <div class="stat-tile">
-    <div class="stat-tile-value">Week {{ internship_week }}</div>
-    <div class="stat-tile-label">of the internship</div>
+    <span class="stat-tile-value">Week {{ internship_week }}</span>
+    <span class="stat-tile-label">of the internship</span>
   </div>
   <div class="stat-tile">
-    <div class="stat-tile-value">{{ internship_days_left }}</div>
-    <div class="stat-tile-label">days left until {{ internship_end_date_display }}</div>
+    <span class="stat-tile-value">{{ internship_days_left }}</span>
+    <span class="stat-tile-label">days left · ends {{ internship_end_date_display }}</span>
   </div>
 </div>
 

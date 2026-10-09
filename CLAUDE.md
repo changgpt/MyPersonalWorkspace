@@ -76,7 +76,7 @@ daybook/
                         # _name.html partials are htmx swap targets the
                         # full page also includes
   static/style.css       # warm-neutral design system (CSS custom properties)
-  static/vendor/         # vendored JS (htmx, turndown)
+  static/vendor/         # vendored JS (htmx, turndown) + fonts/ (Inter, Newsreader; OFL)
 tests/                   # pytest; conftest.py gives `app`/`client`/`db` fixtures
 run.py                   # entry point: `python run.py`
 data/                    # git-ignored; daybook.db lives here
@@ -609,7 +609,8 @@ data/                    # git-ignored; daybook.db lives here
   the browser's 16px default originally, which made the whole app read a
   size larger than it should next to its own 13-14px meta text ("everything
   is a bit big"). The dashboard's loudest items were scaled with it
-  (stat tile value 28→23px, `.page-header h2` 22→19px, card padding
+  (stat tile value 28→23px, `.page-header h2` 22→19px — since raised to
+  25px in a lighter weight, see the page-titles bullet — card padding
   16/20→13/16px, `.main-inner > h3` section headings pulled down to 15px
   with tighter margins — those margins were most of what read as airy once
   several sections stacked up). The **greeting went the other way**
@@ -652,13 +653,33 @@ data/                    # git-ignored; daybook.db lives here
   raises one with no round trip (used by the weekly review save and by the
   failure paths in `drag-drop.js`/`note-checkboxes.js`, which used to call
   `alert()`). They self-dismiss after 4s or on click.
-- **Headings use a serif font, body text a sans-serif one** — `--font-serif`
-  (Georgia, falling back through a few other system serifs) on every
-  `h1`-`h6` via one global rule in `style.css`, `--font-sans` (the original
-  system-UI stack) everywhere else. No font files are vendored or loaded
-  from a CDN (consistent with htmx/Turndown below) — Georgia ships with
-  essentially every OS, so the stack is system-only by design, not a
-  placeholder waiting for a real webfont.
+- **Two vendored typefaces: Inter for the interface, Newsreader for
+  headings** (`static/vendor/fonts/`, OFL, licence texts alongside). This
+  **reverses** the earlier "system fonts only" rule, on the user's call:
+  the system stack rendered as Segoe UI + *bold* Georgia on their Windows
+  laptop, which read as a document rather than a product ("too bold ...
+  not looking professional"; wanted it to look like Granola/ChatGPT/
+  Claude). No system font exists on every OS that looks like that, which
+  is the only reason to ship one. Still **never from a CDN** — vendored
+  exactly like htmx/Turndown, and `tests/test_greetings.py` asserts no
+  Google Fonts URL creeps into the stylesheet.
+  - Both are **variable** fonts (one latin-subset file each, every
+    weight), declared with weight *ranges* (`100 900` / `200 800`) — that
+    is what makes `450`/`550` real weights rather than rounding to 400/700.
+    Glyphs outside the subset (arrows, CJK) fall back per character to the
+    system names still in the stack, so nothing renders as a box.
+  - **Headings are regular weight (400; 500 for h3-h6).** The browser
+    default is bold, and that was the "too bold" complaint. An editorial
+    serif reads as a title from its shape and size, not its weight; small
+    ones get 500 so a 15px label doesn't go spindly. Sans bolds were eased
+    from 600 to 550, since Inter's 600 is heavier than Segoe's.
+  - **Uppercase tracked micro-labels are sans, not serif** (the Board's
+    column heads): small caps in a regular-weight serif read as faint and
+    antique.
+  - **Nothing is italic.** Both files are roman-only, so `font-style:
+    italic` would make the browser slant the letters itself, which looks
+    cheap. The Dashboard quote is upright for that reason; add an italic
+    file before reaching for italics anywhere.
 - **Dark mode is pure CSS + localStorage**, no server-side setting: a
   `:root[data-theme="dark"]` block in `style.css` overrides the same
   custom properties the light theme defines, toggled by
@@ -866,6 +887,25 @@ data/                    # git-ignored; daybook.db lives here
   `flex-wrap: wrap` on the row and `flex: 1 1 40%; min-width: 0` on the
   title, a narrow column collapsed the title to one word per line while
   the priority/due/Edit items kept their space. Keep both if you restyle it.
+- **The Dashboard's landing is modelled on Claude's home screen** (user's
+  reference): one large, regular-weight serif line (`clamp(34px, 2.9vw,
+  44px)`) with the time-of-day emoji as a *mark in front of it* rather than
+  trailing it, set well down the page (`margin-top: clamp(28px, 9vh,
+  96px)`, viewport-relative so a tall screen gets a proportionally lower
+  landing), in ink colour rather than accent. Everything under it is kept
+  deliberately small — "the more space it takes up the clunkier and less
+  professional it looks": the two internship tiles are **one line each**
+  (value and label share a baseline, ~45px tall instead of ~85px).
+  `greetings.greeting_parts` returns `(words, emoji)` separately for this;
+  `greeting_message` is built from it, so the no-name/no-comma rule lives
+  in one place.
+- **Page titles are 25px regular serif, and a page's own actions are
+  pills.** `.page-header h2` went 19→25px (user: "Dashboard text should be
+  a bit bigger"); applied to every page so the Dashboard's title isn't the
+  odd one out. The buttons directly in a page header (`+ Quick note`,
+  `+ Add task`, `Board view`) are `999px` pills — scoped with child
+  selectors so the People/Projects inline-add form keeps its compact
+  filter-bar button.
 - **The Dashboard is forward-looking: greeting, countdown, Coming up,
   Today's tasks, Overdue, Recent notes.** "Completed this week" was
   removed — it's a backward-looking list, and the page is for what's next

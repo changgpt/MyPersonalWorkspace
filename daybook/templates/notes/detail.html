@@ -11,15 +11,36 @@
     </div>
     <div class="note-header-row">
       <h2 class="note-title">{{ note['title'] }}</h2>
+      {# The same round .icon-btn the compose screen uses for import and
+         formatting, so reading and writing a note share one control
+         vocabulary. Four full-size buttons with words on them were the
+         loudest thing above the note they were about. #}
       <div class="note-header-actions">
         {# Same control as the editor's, writing the same localStorage key,
-           so a note reads at the size it was written at. #}
-        <button class="btn btn-secondary" type="button" data-note-size="-1" title="Smaller text">A&minus;</button>
-        <button class="btn btn-secondary" type="button" data-note-size="1" title="Larger text">A+</button>
-        <a class="btn btn-secondary" href="{{ url_for('notes.edit_view', note_id=note['id']) }}">Edit</a>
+           so a note reads at the size it was written at. These two stay
+           glyphs rather than icons: "A−/A+" *is* the universal symbol for
+           text size, and no 16px drawing says it better. #}
+        <button class="icon-btn" type="button" data-note-size="-1" title="Smaller text"
+                aria-label="Smaller text">A&minus;</button>
+        <button class="icon-btn" type="button" data-note-size="1" title="Larger text"
+                aria-label="Larger text">A+</button>
+        <a class="icon-btn" href="{{ url_for('notes.edit_view', note_id=note['id']) }}"
+           title="Edit this note" aria-label="Edit this note">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+               stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M11.5 2.5a1.6 1.6 0 012.25 2.25L5.5 13 2.5 13.5l.5-3z"/>
+          </svg>
+        </a>
         <form method="post" action="{{ url_for('notes.delete_view', note_id=note['id']) }}" style="display:inline"
               onsubmit="return confirm('Delete this note? This cannot be undone.')">
-          <button class="btn btn-danger" type="submit">Delete</button>
+          <button class="icon-btn icon-btn-danger" type="submit"
+                  title="Delete this note" aria-label="Delete this note">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                 stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2.5 4h11M6 4V2.5h4V4M4 4l.6 9a1 1 0 001 1h4.8a1 1 0 001-1L12 4"/>
+              <path d="M6.5 6.8v4.4M9.5 6.8v4.4"/>
+            </svg>
+          </button>
         </form>
       </div>
     </div>

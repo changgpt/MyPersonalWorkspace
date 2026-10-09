@@ -194,6 +194,116 @@ function insertChecklistItem(editor) {
   selection.addRange(newRange);
 }
 
+// Typing "- " at the start of a line starts a bullet list, the way every
+// Markdown editor behaves. Without this the only way in was the toolbar,
+// which is now collapsed behind a button -- so the note editor looked
+// like it had simply forgotten how lists work.
+//
+// Every pattern here has to round-trip to Markdown (the same rule that
+// decides whether a toolbar button exists), which is why the list is
+// exactly the markers Markdown itself uses, and no more.
+// Markers that may start a *block*: typed at the very beginning of an
+// empty-so-far paragraph.
+const BLOCK_AUTOFORMAT = [
+  [/^\[([ xX]?)\]$/, (editor) => insertChecklistItem(editor)],
+  [/^[-*+]$/, () => document.execCommand("insertUnorderedList")],
+  [/^\d{1,3}[.)]$/, () => document.execCommand("insertOrderedList")],
+  [/^#$/, () => document.execCommand("formatBlock", false, "h1")],
+  [/^##$/, () => document.execCommand("formatBlock", false, "h2")],
+  [/^###$/, () => document.execCommand("formatBlock", false, "h3")],
+  [/^>$/, () => document.execCommand("formatBlock", false, "blockquote")],
+];
+
+// The only marker honoured *inside* an existing list item. Typing "- "
+// already made the bullet, so the only way to reach "- [ ] " is to type
+// "[] " in the item it just made -- which is how every other Markdown
+// editor behaves. Nothing else applies here: a second "- " inside a list
+// item is a literal dash, not a request to re-list it.
+const ITEM_AUTOFORMAT = [
+  [/^\[([ xX]?)\]$/, (editor, block, marker) =>
+    convertListItemToChecklist(block, /[xX]/.test(marker))],
+];
+
+// The <p>/<div> the caret is sitting in, or null. Deliberately not a
+// heading or a quote: those are already formatted.
+function plainBlockAtCaret(editor, range) {
+  let node = range.startContainer;
+  node = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+  while (node && node !== editor) {
+    if (["LI", "H1", "H2", "H3", "H4", "H5", "H6", "BLOCKQUOTE", "PRE", "CODE"].includes(node.tagName)) {
+      return null;
+    }
+    if (node.tagName === "P" || node.tagName === "DIV") return node;
+    node = node.parentElement;
+  }
+  return null;
+}
+
+// A list item that isn't already a checklist item, or null.
+function plainListItemAtCaret(editor, range) {
+  let node = range.startContainer;
+  node = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+  while (node && node !== editor) {
+    if (node.tagName === "LI") {
+      return node.classList.contains("task-list-item") ? null : node;
+    }
+    node = node.parentElement;
+  }
+  return null;
+}
+
+// Turns a bullet into a checkbox in place, building exactly the markup
+// pymdownx.tasklist renders server-side -- matching it is what lets the
+// item round-trip to "- [ ] " and back (see buildChecklistControl).
+function convertListItemToChecklist(item, checked) {
+  item.classList.add("task-list-item");
+  const list = item.parentElement;
+  if (list && (list.tagName === "UL" || list.tagName === "OL")) {
+    list.classList.add("task-list");
+  }
+  item.prepend(buildChecklistControl(checked), document.createTextNode(" "));
+}
+
+// Runs on the space that completes a marker. Returns true if it formatted
+// something, so the caller knows what just happened to the DOM.
+function applyAutoformat(editor) {
+  const selection = window.getSelection();
+  if (!selection.rangeCount || !selection.isCollapsed) return false;
+  const range = selection.getRangeAt(0);
+
+  const paragraph = plainBlockAtCaret(editor, range);
+  const block = paragraph || plainListItemAtCaret(editor, range);
+  if (!block) return false;
+
+  // Everything from the start of the block up to the caret. The marker
+  // has to be the whole of it -- "a - " mid-sentence is just a dash.
+  const upToCaret = range.cloneRange();
+  upToCaret.selectNodeContents(block);
+  upToCaret.setEnd(range.startContainer, range.startOffset);
+  // A *trailing* space in a contenteditable is stored as U+00A0, not
+  // U+0020 -- which is exactly the space that completes every marker
+  // here, so comparing against a plain " " never matched anything.
+  const typed = upToCaret.toString().replace(/\u00A0/g, " ");
+  if (!typed.endsWith(" ")) return false;
+
+  const marker = typed.slice(0, -1);
+  const patterns = paragraph ? BLOCK_AUTOFORMAT : ITEM_AUTOFORMAT;
+  const match = patterns.find(([pattern]) => pattern.test(marker));
+  if (!match) return false;
+
+  // Remove the marker with execCommand("delete") -- i.e. the browser's
+  // own backspace -- rather than deleting a Range. A Range delete leaves
+  // the document's selection pointing at offsets that no longer exist,
+  // and the formatting command then reached back into the *previous*
+  // paragraph: two lines merged into one list item and the heading after
+  // them came out empty. Backspacing keeps the selection normalized, and
+  // can't run past the block start because the caret sits exactly after
+  // the characters being removed.
+  for (let i = 0; i < typed.length; i += 1) document.execCommand("delete");
+  match[1](editor, block, marker);
+  return true;
+}
+
 // Pasted HTML is the main source of junk markup in a note: Word, Google
 // Docs and most web pages carry <span style="font-family:...">, <font>,
 // MsoNormal classes, nested divs and inline colours, none of which survive
@@ -454,8 +564,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // General safety net: typing/Enter can trigger the same browser list-
     // nesting quirk without ever touching the toolbar.
-    editor.addEventListener("input", () => {
+    editor.addEventListener("input", (event) => {
       ensureTopLevelBlock(editor);
+      // Only on the space that finishes a marker, and only for real typed
+      // text -- not for a paste, an undo, or a composition, where "- "
+      // appearing at the start of a line is content, not an instruction.
+      if (event.inputType === "insertText" && event.data === " ") {
+        applyAutoformat(editor);
+      }
       unwrapBlockChildrenFromParagraphs(editor);
       updateWordCount(editor);
     });

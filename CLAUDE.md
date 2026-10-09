@@ -109,6 +109,23 @@ data/                    # git-ignored; daybook.db lives here
   to filling in role/team/how-you-met. `templates/people/detail.html` shows every filled-in
   field in one card and an empty-state prompt to "add some" when none are
   set yet, rather than always rendering empty labels.
+- **Projects can be added directly too** (`POST /projects/new`), for the
+  same reason People can: tagging a note was the only way in, so a task
+  couldn't be filed under a project you hadn't written about yet and the
+  task form's Project picker had nothing to pick. Mirrors People exactly —
+  `find_or_create_project`, blank name is a no-op redirect, straight to
+  the new project's page.
+  - The route also answers **JSON** when the request asks for it. That's
+    what the `+` next to the task form's Project pill uses
+    (`addProjectInline` in `app.js`): it creates the project and selects
+    it without navigating away from a half-filled form. A `prompt()`
+    rather than an inline field or a modal — one field, single user, and
+    the editor's link dialog already works that way.
+  - Appending an `<option>` to the native `<select>` is not enough:
+    `select.js` mirrors the options into its own panel once at enhance
+    time, so anything adding one later must call `window.reEnhanceSelect`,
+    which tears the wrapper down and rebuilds it through the same single
+    `enhance()` path.
 - **Tag input in forms** is a single comma-separated text field with an
   HTML `<datalist>` for autocomplete (not a JS multi-select widget) — simple
   and dependency-free. Known limitation: the browser's datalist suggests
@@ -159,6 +176,15 @@ data/                    # git-ignored; daybook.db lives here
     `.compose-pill` class selector** and would put the ring and hard edge
     back on every pill; excluding is cleaner than escalating. Fields in a
     `.compose-foot` still get the ring, via the `.form-row` selectors.
+  - **A pill must never be `overflow: hidden`.** It holds a custom
+    `<select>` whose panel is an absolutely-positioned child, so clipping
+    the pill clipped the open dropdown out of existence — Priority,
+    Category and Level simply looked broken — and made the pill scroll
+    sideways, chopping its own label off. The round ends come from
+    `border-radius` on the *controls* (which are what paint a hover
+    background), square in the middle of a joined `.compose-pills` group
+    and round on whichever end they sit at. `tests/test_css_regressions.py`
+    pins it.
   - `.compose-area` is `resize: none` + `overflow: hidden`, grown to fit
     by `initComposeAreas`/`growComposeArea` in `app.js`. The drag handle
     was the last visual tell that it's a form field; the note editor
@@ -808,6 +834,15 @@ data/                    # git-ignored; daybook.db lives here
   from, and this is the one page meant for reading rather than scanning),
   with the body in a `.note-sheet` surface card. Don't widen it to match
   the other pages — the narrowness is the point.
+- **A note's header actions are icon buttons**, the same round
+  `.icon-btn` the compose screen uses for file import and formatting, so
+  reading and writing a note share one control vocabulary. Four full-size
+  labelled buttons (A−, A+, Edit, Delete) were the loudest thing on a page
+  that is otherwise about reading. A−/A+ stay *glyphs* rather than icons —
+  that pair is the universal symbol for text size and no 16px drawing says
+  it better — while Edit and Delete get a pencil and a bin, each with an
+  `aria-label`, since an icon-only control has to say what it does.
+  `.icon-btn-danger` is the only thing that turns `--danger` red on hover.
 - **A note's own checkboxes are the live ones** (`static/note-checkboxes.js`).
   `pymdownx.tasklist` renders `- [ ]` as a *disabled* checkbox, so the note
   page used to list every action item a second time underneath (as real
@@ -1030,6 +1065,31 @@ data/                    # git-ignored; daybook.db lives here
     (`width: 1.5em; margin-left: -1.5em`) so the checkbox sits where the
     bullet would be and every item's text lines up. That also widens the
     click target, which `note-checkboxes.js` relies on.
+  - **Typing a Markdown marker formats the block** (`applyAutoformat`),
+    which is what makes `- ` start a list the way any other editor does —
+    without it the only way in was a toolbar that is now collapsed behind
+    a button. `BLOCK_AUTOFORMAT` runs only at the start of a plain
+    `<p>`/`<div>`: `- `/`* `/`+ ` bullet, `1. `/`1) ` numbered, `# `/`## `/
+    `### ` heading, `> ` quote, `[] `/`[x] ` checklist. `ITEM_AUTOFORMAT`
+    is the one set allowed *inside* an existing `<li>`, and holds only the
+    checklist marker: typing `- ` already made the bullet, so `- [ ] ` is
+    reached by typing `[] ` in the item it just made (a second `- ` inside
+    a list item stays a literal dash). Every marker here has to round-trip
+    to Markdown — the same rule that decides whether a toolbar button
+    exists — which is why the set is exactly Markdown's own.
+    Three things it got wrong first, all found in a browser:
+    - It fires on `input` with `inputType === "insertText" && data === " "`,
+      so a paste or an undo that happens to produce `- ` at the start of a
+      line stays literal.
+    - **A trailing space in a contenteditable is U+00A0, not U+0020** —
+      and that is precisely the space completing every marker, so the
+      first version matched nothing at all. The comparison normalizes it.
+    - The marker is removed with `execCommand("delete")` per character
+      (the browser's own backspace), **not** by deleting a `Range`.
+      Deleting a cloned Range leaves the document's selection pointing at
+      offsets that no longer exist, and the formatting command then
+      reached back into the *previous* paragraph: two lines merged into
+      one list item and the heading after them came out empty.
   - Tab/Shift+Tab inside the editor call `execCommand('indent'/'outdent')`
     directly (meaningful mainly inside a list); this is unrelated to
     `editor-toolbar.js`'s own Tab handling, which only applies to plain

@@ -874,7 +874,13 @@ label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom
   line-height: 1.25;
 }
 
-.note-header-actions { flex: none; white-space: nowrap; }
+/* A row of round .icon-btns, including one inside its own delete <form>
+   -- hence the flex rather than relying on inline-block spacing. */
+.note-header-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+.note-header-actions form { display: flex; }
+/* The A-/A+ glyphs, which are text in a button sized for a 15px icon. */
+.note-header-actions .icon-btn { font-size: 12px; }
+.icon-btn-danger:hover { color: var(--danger); border-color: var(--danger); }
 
 .note-header-tags { margin-top: 12px; }
 
@@ -1396,13 +1402,18 @@ input.compose-title:focus { outline: none; }
 }
 /* Type and date share a single pill so they read as one control group,
    the way the reference pairs its calendar and people chips. */
+/* NOT `overflow: hidden`, however tempting -- a pill contains a custom
+   <select>, whose panel is an absolutely-positioned child, and clipping
+   the pill clipped the open dropdown out of existence (it also made the
+   pill scroll sideways, chopping the label off). The children get
+   `border-radius: inherit` instead, which is all the clip was for: it
+   keeps a control's hover background inside the pill's round ends. */
 .compose-pills {
   display: flex;
   align-items: center;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--surface);
-  overflow: hidden;
 }
 .compose-pills > * + * { border-left: 1px solid var(--border); }
 /* Beats the generic form-control rules by being more specific, rather
@@ -1410,7 +1421,6 @@ input.compose-title:focus { outline: none; }
 .compose-pills .select-button,
 .compose-meta .compose-pills input[type="date"] {
   border: none;
-  border-radius: 0;
   background: none;
   box-shadow: none;
   padding: 6px 12px;
@@ -1422,6 +1432,15 @@ input.compose-title:focus { outline: none; }
 .compose-meta .compose-pills input[type="date"]:hover { background: var(--surface-sunken); }
 .compose-pills .select-button { gap: 7px; }
 .compose-pills .select-caret { width: 5px; height: 5px; }
+/* A control paints its own hover background, so it -- not the pill -- is
+   what has to be rounded. Square in the middle of a joined group, round
+   on whichever end it sits at. */
+.compose-pills .select-button,
+.compose-meta .compose-pills input[type="date"] { border-radius: 0; }
+.compose-pills > :first-child .select-button,
+.compose-pills > :first-child input[type="date"] { border-radius: 999px 0 0 999px; }
+.compose-pills > :last-child .select-button,
+.compose-pills > :last-child input[type="date"] { border-radius: 0 999px 999px 0; }
 .compose-meta .compose-pills input[type="date"]:focus { outline: none; background: var(--surface-sunken); }
 
 /* Round icon-only button, used for file import and the formatting toggle.
@@ -1626,13 +1645,11 @@ form:not(.filter-bar):not(.search-form):not(.compose) textarea:focus,
   border-radius: 999px;
   background: var(--surface);
   box-shadow: 0 0 0 1px rgba(42, 39, 36, 0.045);
-  overflow: hidden;
 }
 .compose-pill .select-button,
 .compose-pill input[type="date"],
 .compose-pill input[type="text"] {
   border: none;
-  border-radius: 0;
   background: none;
   box-shadow: none;
   padding: 6px 12px;
@@ -1640,6 +1657,10 @@ form:not(.filter-bar):not(.search-form):not(.compose) textarea:focus,
   font-size: 13px;
   color: var(--text-muted);
 }
+.compose-pill .select-button,
+.compose-pill input[type="date"],
+.compose-pill input[type="text"],
+.compose-pill .date-chip-label { border-radius: 999px; }
 .compose-pill .select-button:hover { background: var(--surface-sunken); }
 .compose-pill .select-caret { width: 5px; height: 5px; }
 /* A dark ring is invisible on a dark surface -- same flip the cards and

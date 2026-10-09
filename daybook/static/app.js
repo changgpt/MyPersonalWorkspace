@@ -93,3 +93,52 @@ document.addEventListener("DOMContentLoaded", initComposeAreas);
 // The min-height floor is in vh and the measure is in vw, so both the
 // floor and the wrap point move when the window does.
 window.addEventListener("resize", growAllComposeAreas);
+
+// "+ New project" next to a project picker: creates one and selects it
+// without leaving the form you're filling in. A prompt() rather than an
+// inline field or a modal -- this is a one-field, single-user action, and
+// the app already uses prompt() for the editor's link dialog.
+//
+// The new <option> has to be appended to the real <select> *and* the
+// styled dropdown rebuilt, because select.js mirrors the options into its
+// own panel once at enhance time (see static/select.js).
+async function addProjectInline(button) {
+  const select = document.getElementById(button.dataset.targetSelect);
+  if (!select) return;
+  const name = window.prompt("New project name:");
+  if (!name || !name.trim()) return;
+
+  const body = new FormData();
+  body.append("name", name.trim());
+  let project;
+  try {
+    const response = await fetch(button.dataset.addProject, {
+      method: "POST",
+      body,
+      // What makes the route answer with JSON instead of its usual
+      // redirect to the new project's page.
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) throw new Error(response.statusText);
+    project = await response.json();
+  } catch (err) {
+    window.showToast("Could not add that project.");
+    return;
+  }
+
+  // find-or-create on the server, so re-typing an existing name must
+  // select the existing option rather than add a second one.
+  let option = [...select.options].find((o) => o.value === String(project.id));
+  if (!option) {
+    option = new Option(project.name, String(project.id));
+    select.add(option);
+  }
+  select.value = String(project.id);
+  select.dispatchEvent(new Event("change", { bubbles: true }));
+  if (window.reEnhanceSelect) window.reEnhanceSelect(select);
+}
+
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-add-project]");
+  if (button) addProjectInline(button);
+});

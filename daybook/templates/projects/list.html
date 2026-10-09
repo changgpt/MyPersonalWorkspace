@@ -1,7 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Projects — FiloFax{% endblock %}
 {% block content %}
-<div class="page-header"><h2>Projects</h2></div>
+<div class="page-header">
+  <h2>Projects</h2>
+  {# Same direct route in as People's. Projects used to appear only by
+     being tagged on a note; find-or-create means retyping an existing
+     name opens it rather than duplicating it. #}
+  <form class="filter-bar inline-add" method="post" action="{{ url_for('projects.create_view') }}">
+    <input type="text" name="name" placeholder="Add a project…" required
+           class="quick-add-input" aria-label="Project name">
+    <button class="btn" type="submit">Add</button>
+  </form>
+</div>
 {% if projects %}
 <div class="card-grid">
   {% for project in projects %}
@@ -12,6 +22,6 @@
   {% endfor %}
 </div>
 {% else %}
-<div class="empty-state">No projects yet. Tag one on a note to add it here.</div>
+<div class="empty-state">No projects yet. Add one above, or tag one on a note.</div>
 {% endif %}
 {% endblock %}

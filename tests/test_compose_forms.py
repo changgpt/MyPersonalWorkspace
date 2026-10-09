@@ -125,3 +125,25 @@ def test_the_sidebar_search_advertises_its_shortcut(client, app):
     # The Back-link origin still rides along; without it the results page
     # has nothing to offer a "Back to Tasks" link from.
     assert 'name="from"' in sidebar
+
+
+def test_the_note_header_actions_are_icon_buttons(client, app):
+    """Four full-size labelled buttons (A-, A+, Edit, Delete) were the
+    loudest thing above the note they were about. Same round .icon-btn the
+    compose screen uses for import and formatting."""
+    with app.app_context():
+        note_id = db.create_note(
+            title="A note", note_type_id=1, event_date="2026-10-07",
+            body_markdown="body",
+        )
+    body = client.get(f"/notes/{note_id}").get_data(as_text=True)
+    header = body.split('note-header-actions')[1].split("</header>")[0]
+    assert header.count('class="icon-btn') >= 3
+    # No full-size labelled buttons left. Checked as whole class
+    # attributes, since .icon-btn-danger legitimately contains the
+    # substring "btn-danger".
+    assert 'class="btn btn-secondary"' not in header
+    assert 'class="btn btn-danger"' not in header
+    # An icon-only control still has to say what it does.
+    for label in ("Smaller text", "Larger text", "Edit this note", "Delete this note"):
+        assert f'aria-label="{label}"' in header, label

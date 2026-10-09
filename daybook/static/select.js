@@ -22,7 +22,10 @@
       const label = document.querySelector(`label[for="${select.id}"]`);
       if (label) return label.textContent.trim();
     }
-    return "";
+    // A compose pill names its select with aria-label and a faint <span>
+    // prefix, not a <label for> -- without this the styled button it's
+    // replaced by would be announced as just its current value.
+    return select.getAttribute("aria-label") || "";
   }
 
   function enhance(select) {
@@ -184,6 +187,24 @@
   function enhanceAll(root) {
     (root || document).querySelectorAll("select:not([data-enhanced])").forEach(enhance);
   }
+
+  // The panel is a copy of the option list, made once at enhance time, so
+  // anything that adds an <option> later has to rebuild it. Tears the
+  // wrapper down and re-enhances rather than patching the panel in place:
+  // one code path builds this control, and it stays that way.
+  // Used by app.js's addProjectInline.
+  function reEnhance(select) {
+    const wrap = select.closest(".select");
+    if (!wrap) return;
+    wrap.parentNode.insertBefore(select, wrap);
+    wrap.remove();
+    delete select.dataset.enhanced;
+    select.classList.remove("select-native");
+    select.removeAttribute("tabindex");
+    select.removeAttribute("aria-hidden");
+    enhance(select);
+  }
+  window.reEnhanceSelect = reEnhance;
 
   document.addEventListener("click", (event) => {
     document.querySelectorAll('.select[data-open="true"]').forEach((wrap) => {
